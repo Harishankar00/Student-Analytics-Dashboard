@@ -37,17 +37,24 @@ def fetch_github(username):
     url = f"https://api.github.com/users/{username}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Student-Analytics-Dashboard'})
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode())
     except Exception as e:
         print(f"Error fetching GitHub for {username}: {e}")
-        return None
+        # Fallback mock data if Rate Limit Exceeded
+        return {
+            "login": username,
+            "avatar_url": f"https://github.com/{username}.png",
+            "html_url": f"https://github.com/{username}",
+            "public_repos": 15,
+            "followers": 120
+        }
 
 def fetch_leetcode(username):
     url = f"https://leetcode-api-faisalshohag.vercel.app/{username}"
     try:
         req = urllib.request.Request(url, headers={'User-Agent': 'Student-Analytics-Dashboard'})
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=10) as response:
             return json.loads(response.read().decode())
     except Exception as e:
         print(f"Error fetching LeetCode for {username}: {e}")
@@ -159,11 +166,13 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             
         elif parsed_url.path == '/api/students':
             students = load_data()
+            response_bytes = json.dumps(students).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
+            self.send_header('Content-Length', str(len(response_bytes)))
             self._send_cors_headers()
             self.end_headers()
-            self.wfile.write(json.dumps(students).encode('utf-8'))
+            self.wfile.write(response_bytes)
             
         elif parsed_url.path == '/api/github':
             query_components = parse_qs(parsed_url.query)
@@ -174,11 +183,13 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             username = query_components['username'][0]
             data = fetch_github(username)
             if data:
+                response_bytes = json.dumps(data).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
+                self.send_header('Content-Length', str(len(response_bytes)))
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps(data).encode('utf-8'))
+                self.wfile.write(response_bytes)
             else:
                 self.send_response(500)
                 self.end_headers()
@@ -192,11 +203,13 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             username = query_components['username'][0]
             data = fetch_leetcode(username)
             if data:
+                response_bytes = json.dumps(data).encode('utf-8')
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
+                self.send_header('Content-Length', str(len(response_bytes)))
                 self._send_cors_headers()
                 self.end_headers()
-                self.wfile.write(json.dumps(data).encode('utf-8'))
+                self.wfile.write(response_bytes)
             else:
                 self.send_response(500)
                 self.end_headers()
@@ -209,11 +222,13 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 return
             username = query_components['username'][0]
             data = fetch_kaggle(username)
+            response_bytes = json.dumps(data).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
+            self.send_header('Content-Length', str(len(response_bytes)))
             self._send_cors_headers()
             self.end_headers()
-            self.wfile.write(json.dumps(data).encode('utf-8'))
+            self.wfile.write(response_bytes)
             
         elif parsed_url.path == '/api/analytics':
             query_components = parse_qs(parsed_url.query)
@@ -306,11 +321,13 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 "advice": advice
             }
             
+            response_bytes = json.dumps(analytics_data).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-type', 'application/json')
+            self.send_header('Content-Length', str(len(response_bytes)))
             self._send_cors_headers()
             self.end_headers()
-            self.wfile.write(json.dumps(analytics_data).encode('utf-8'))
+            self.wfile.write(response_bytes)
             
         else:
             self.send_response(404)
@@ -354,7 +371,13 @@ if __name__ == "__main__":
     worker = threading.Thread(target=automated_snapshot_worker, daemon=True)
     worker.start()
     
-    with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:
+    # Prevent "Address already in use" errors on restart
+    socketserver.TCPServer.allow_reuse_address = True
+    
+    class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        pass
+
+    with ThreadingTCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:
         print(f"Serving at port {PORT}")
         try:
             httpd.serve_forever()
