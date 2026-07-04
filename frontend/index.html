@@ -12,7 +12,35 @@
     </header>
     <main>
         <section id="status-section">
-            <p>Initializing...</p>
+            <p>Frontend is running!</p>
+        </section>
+
+        <section id="registration-section">
+            <h2>Register Student</h2>
+            <form id="registration-form">
+                <label for="name">Full Name:</label><br>
+                <input type="text" id="name" name="name" required><br><br>
+
+                <label for="github">GitHub Username:</label><br>
+                <input type="text" id="github" name="github" required><br><br>
+
+                <label for="leetcode">LeetCode Username:</label><br>
+                <input type="text" id="leetcode" name="leetcode" required><br><br>
+
+                <label for="kaggle">Kaggle Username:</label><br>
+                <input type="text" id="kaggle" name="kaggle" required><br><br>
+
+                <button type="submit">Register</button>
+            </form>
+            <p id="form-message"></p>
+        </section>
+
+        <section id="dashboard-section" style="margin-top: 40px; border-top: 2px solid #ccc; padding-top: 20px;">
+            <h2>Student Dashboard</h2>
+            <button id="load-dashboard-btn">Load GitHub Metrics</button>
+            <div id="dashboard-content" style="margin-top: 20px;">
+                <!-- Student cards will be injected here -->
+            </div>
         </section>
     </main>
     <script src="app.js"></script>
