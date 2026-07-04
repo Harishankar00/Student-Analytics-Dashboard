@@ -280,9 +280,30 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 else:
                     consistency = "Inactive"
                     
+            # ---------------------------------------------------------
+            # Simple AI Evaluation Engine (Rule-based)
+            # ---------------------------------------------------------
+            advice = ""
+            if consistency == "Inactive" or consistency == "Unknown":
+                advice = "Your metrics haven't shown much activity recently. Consistency is key! Try setting a small goal: push one GitHub commit or solve one easy LeetCode problem this week to build momentum."
+            elif focus == "DSA Focused":
+                advice = "You are doing a fantastic job consistently solving algorithms! To stand out to recruiters, try dedicating some time to building a real-world project on GitHub."
+            elif focus == "Project Focused":
+                advice = "Your project portfolio is growing nicely! However, consider spending 30 minutes a day on LeetCode to ensure you are ready for technical coding interviews."
+            elif focus == "Balanced":
+                advice = "Outstanding work! You have a great balance between building projects and practicing algorithms. Keep up the consistent effort!"
+            else:
+                advice = "Keep learning and coding! Every line of code counts towards your progress."
+                
+            # Add Kaggle specific praise if they participate
+            kag_data = fetch_kaggle(github_user) # Using github_user as proxy since we don't have kaggle username in query
+            if kag_data and kag_data.get("competitions", 0) > 0:
+                advice += " Your participation in Kaggle also shows great initiative in Data Science."
+
             analytics_data = {
                 "focus": focus,
-                "consistency": consistency
+                "consistency": consistency,
+                "advice": advice
             }
             
             self.send_response(200)

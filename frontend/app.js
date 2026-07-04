@@ -123,7 +123,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                             if (analyticsData.consistency === "Active") consistencyColor = "#2ea44f"; // green
                             else if (analyticsData.consistency === "Inactive") consistencyColor = "#d73a49"; // red
                             
-                            analyticsText = `Focus: <strong style="color: ${focusColor};">${analyticsData.focus}</strong> | Consistency: <strong style="color: ${consistencyColor};">${analyticsData.consistency}</strong>`;
+                            analyticsText = `Focus: <strong style="color: ${focusColor};">${analyticsData.focus}</strong> | Consistency: <strong style="color: ${consistencyColor};">${analyticsData.consistency}</strong><br><span style="color: #444; display: block; margin-top: 8px;"><em>"${analyticsData.advice}"</em></span>`;
                         }
                     } catch (e) {
                         console.error("Analytics fetch error:", e);
