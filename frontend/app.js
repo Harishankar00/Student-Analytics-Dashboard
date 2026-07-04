@@ -68,7 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             dashboardContent.innerHTML = ""; // clear loading text
 
-            // 2. Fetch GitHub data for each student
+            // 2. Fetch data for each student
             for (const student of students) {
                 const card = document.createElement("div");
                 card.style.border = "1px solid #ddd";
@@ -128,6 +128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 
                 dashboardContent.appendChild(card);
             }
+            
         } catch (error) {
             dashboardContent.innerHTML = `<p style="color: red;">Error loading dashboard: ${error.message}</p>`;
         }
