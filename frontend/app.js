@@ -77,24 +77,52 @@ document.addEventListener("DOMContentLoaded", async () => {
                 card.style.borderRadius = "5px";
                 
                 try {
+                    // Fetch GitHub
                     const gitResponse = await fetch(`http://localhost:5000/api/github?username=${student.github}`);
                     if (!gitResponse.ok) throw new Error("GitHub profile not found");
-                    
                     const gitData = await gitResponse.json();
+                    
+                    // Fetch LeetCode
+                    let leetText = `<span style="color: gray;">LeetCode Data Unavailable</span>`;
+                    try {
+                        const leetResponse = await fetch(`http://localhost:5000/api/leetcode?username=${student.leetcode}`);
+                        if (leetResponse.ok) {
+                            const leetData = await leetResponse.json();
+                            if (leetData.totalSolved !== undefined) {
+                                leetText = `Total Solved: <strong>${leetData.totalSolved}</strong> (Easy: ${leetData.easySolved}, Med: ${leetData.mediumSolved}, Hard: ${leetData.hardSolved})`;
+                            }
+                        }
+                    } catch (e) {
+                        console.error("LeetCode fetch error:", e);
+                    }
+                    
+                    // Fetch Kaggle
+                    let kaggleText = `<span style="color: gray;">Kaggle Data Unavailable</span>`;
+                    try {
+                        const kaggleResponse = await fetch(`http://localhost:5000/api/kaggle?username=${student.kaggle}`);
+                        if (kaggleResponse.ok) {
+                            const kaggleData = await kaggleResponse.json();
+                            kaggleText = `Competitions: <strong>${kaggleData.competitions}</strong> | Datasets: <strong>${kaggleData.datasets}</strong> | Notebooks: <strong>${kaggleData.notebooks}</strong>`;
+                        }
+                    } catch (e) {
+                        console.error("Kaggle fetch error:", e);
+                    }
                     
                     card.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <img src="${gitData.avatar_url}" alt="Avatar" width="60" style="border-radius: 50%;">
                             <div>
                                 <h3 style="margin: 0;">${student.name} (<a href="${gitData.html_url}" target="_blank">${gitData.login}</a>)</h3>
-                                <p style="margin: 5px 0 0 0;">Public Repos: <strong>${gitData.public_repos}</strong> | Followers: <strong>${gitData.followers}</strong></p>
+                                <p style="margin: 5px 0 0 0;"><strong>GitHub:</strong> Repos: ${gitData.public_repos} | Followers: ${gitData.followers}</p>
+                                <p style="margin: 5px 0 0 0;"><strong>LeetCode:</strong> ${leetText}</p>
+                                <p style="margin: 5px 0 0 0;"><strong>Kaggle:</strong> ${kaggleText}</p>
                             </div>
                         </div>
                     `;
                 } catch (err) {
                     card.innerHTML = `
                         <h3 style="margin: 0;">${student.name}</h3>
-                        <p style="color: red;">Error fetching GitHub data for ${student.github}</p>
+                        <p style="color: red;">Error fetching data for ${student.name}: ${err.message}</p>
                     `;
                 }
                 
