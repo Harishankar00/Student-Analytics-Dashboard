@@ -215,6 +215,82 @@ class SimpleHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps(data).encode('utf-8'))
             
+        elif parsed_url.path == '/api/analytics':
+            query_components = parse_qs(parsed_url.query)
+            if 'github' not in query_components or 'leetcode' not in query_components:
+                self.send_response(400)
+                self.end_headers()
+                return
+                
+            github_user = query_components['github'][0]
+            leetcode_user = query_components['leetcode'][0]
+            
+            # Get latest stats to calculate Focus
+            git_data = fetch_github(github_user)
+            leet_data = fetch_leetcode(leetcode_user)
+            
+            repos = git_data.get("public_repos", 0) if git_data else 0
+            solved = leet_data.get("totalSolved", 0) if leet_data else 0
+            
+            # Calculate Focus
+            # We use a simple ratio: Total Solved / (Total Solved + Repos * 5)
+            # We weight a repo as roughly equal to 5 leetcode problems
+            focus = "Balanced"
+            if solved + repos == 0:
+                focus = "Needs Activity"
+            else:
+                weighted_repos = repos * 5
+                dsa_ratio = solved / (solved + weighted_repos)
+                if dsa_ratio > 0.7:
+                    focus = "DSA Focused"
+                elif dsa_ratio < 0.3:
+                    focus = "Project Focused"
+                    
+            # Calculate Consistency from Snapshots
+            snapshots = load_snapshots()
+            consistency = "Unknown"
+            
+            if len(snapshots) >= 2:
+                # Compare oldest and newest snapshot for this user
+                oldest = snapshots[0]
+                newest = snapshots[-1]
+                
+                old_solved, new_solved = 0, 0
+                old_repos, new_repos = 0, 0
+                
+                for s in oldest.get("students", []):
+                    if s.get("github") == github_user:
+                        if s.get("metrics", {}).get("leetcode"):
+                            old_solved = s["metrics"]["leetcode"].get("totalSolved", 0)
+                        if s.get("metrics", {}).get("github"):
+                            old_repos = s["metrics"]["github"].get("repos", 0)
+                            
+                for s in newest.get("students", []):
+                    if s.get("github") == github_user:
+                        if s.get("metrics", {}).get("leetcode"):
+                            new_solved = s["metrics"]["leetcode"].get("totalSolved", 0)
+                        if s.get("metrics", {}).get("github"):
+                            new_repos = s["metrics"]["github"].get("repos", 0)
+                            
+                solved_diff = new_solved - old_solved
+                repos_diff = new_repos - old_repos
+                
+                if solved_diff > 0 or repos_diff > 0:
+                    consistency = "Active"
+                else:
+                    consistency = "Inactive"
+                    
+            analytics_data = {
+                "focus": focus,
+                "consistency": consistency
+            }
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self._send_cors_headers()
+            self.end_headers()
+            self.wfile.write(json.dumps(analytics_data).encode('utf-8'))
+            
         else:
             self.send_response(404)
             self.end_headers()

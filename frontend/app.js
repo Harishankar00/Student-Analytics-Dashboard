@@ -71,15 +71,12 @@ document.addEventListener("DOMContentLoaded", async () => {
             // 2. Fetch data for each student
             for (const student of students) {
                 const card = document.createElement("div");
-                card.style.border = "1px solid #ddd";
-                card.style.padding = "15px";
-                card.style.marginBottom = "15px";
-                card.style.borderRadius = "5px";
+                card.className = "student-card";
                 
                 try {
                     // Fetch GitHub
                     const gitResponse = await fetch(`http://localhost:5000/api/github?username=${student.github}`);
-                    if (!gitResponse.ok) throw new Error("GitHub profile not found");
+                    if (!gitResponse.ok) throw new Error(`GitHub profile '${student.github}' not found`);
                     const gitData = await gitResponse.json();
                     
                     // Fetch LeetCode
@@ -91,6 +88,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                             if (leetData.totalSolved !== undefined) {
                                 leetText = `Total Solved: <strong>${leetData.totalSolved}</strong> (Easy: ${leetData.easySolved}, Med: ${leetData.mediumSolved}, Hard: ${leetData.hardSolved})`;
                             }
+                        } else {
+                            leetText = `<span style="color: #d73a49;">Failed to load LeetCode data.</span>`;
                         }
                     } catch (e) {
                         console.error("LeetCode fetch error:", e);
@@ -103,21 +102,47 @@ document.addEventListener("DOMContentLoaded", async () => {
                         if (kaggleResponse.ok) {
                             const kaggleData = await kaggleResponse.json();
                             kaggleText = `Competitions: <strong>${kaggleData.competitions}</strong> | Datasets: <strong>${kaggleData.datasets}</strong> | Notebooks: <strong>${kaggleData.notebooks}</strong>`;
+                        } else {
+                            kaggleText = `<span style="color: #d73a49;">Failed to load Kaggle data.</span>`;
                         }
                     } catch (e) {
                         console.error("Kaggle fetch error:", e);
                     }
                     
+                    // Fetch Analytics (Focus & Consistency)
+                    let analyticsText = `<span style="color: gray;">Analytics Unavailable</span>`;
+                    try {
+                        const analyticsResponse = await fetch(`http://localhost:5000/api/analytics?github=${student.github}&leetcode=${student.leetcode}`);
+                        if (analyticsResponse.ok) {
+                            const analyticsData = await analyticsResponse.json();
+                            let focusColor = "#0366d6"; // blue
+                            if (analyticsData.focus === "DSA Focused") focusColor = "#6f42c1"; // purple
+                            else if (analyticsData.focus === "Project Focused") focusColor = "#e36209"; // orange
+                            
+                            let consistencyColor = "gray";
+                            if (analyticsData.consistency === "Active") consistencyColor = "#2ea44f"; // green
+                            else if (analyticsData.consistency === "Inactive") consistencyColor = "#d73a49"; // red
+                            
+                            analyticsText = `Focus: <strong style="color: ${focusColor};">${analyticsData.focus}</strong> | Consistency: <strong style="color: ${consistencyColor};">${analyticsData.consistency}</strong>`;
+                        }
+                    } catch (e) {
+                        console.error("Analytics fetch error:", e);
+                    }
+                    
                     card.innerHTML = `
-                        <div style="display: flex; align-items: center; gap: 15px;">
-                            <img src="${gitData.avatar_url}" alt="Avatar" width="60" style="border-radius: 50%;">
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <img src="${gitData.avatar_url}" alt="Avatar" width="60" style="border-radius: 50%; border: 2px solid #e1e4e8;">
                             <div>
-                                <h3 style="margin: 0;">${student.name} (<a href="${gitData.html_url}" target="_blank">${gitData.login}</a>)</h3>
-                                <p style="margin: 5px 0 0 0;"><strong>GitHub:</strong> Repos: ${gitData.public_repos} | Followers: ${gitData.followers}</p>
-                                <p style="margin: 5px 0 0 0;"><strong>LeetCode:</strong> ${leetText}</p>
-                                <p style="margin: 5px 0 0 0;"><strong>Kaggle:</strong> ${kaggleText}</p>
+                                <h3 style="margin: 0;">${student.name}</h3>
+                                <a href="${gitData.html_url}" target="_blank" style="font-size: 0.9em; color: #586069; text-decoration: none;">@${gitData.login}</a>
                             </div>
                         </div>
+                        <div style="line-height: 1.5;">
+                            <p style="margin: 5px 0;"><strong>GitHub:</strong> Repos: ${gitData.public_repos} | Followers: ${gitData.followers}</p>
+                            <p style="margin: 5px 0;"><strong>LeetCode:</strong> ${leetText}</p>
+                            <p style="margin: 5px 0;"><strong>Kaggle:</strong> ${kaggleText}</p>
+                        </div>
+                        <p class="ai-insights"><strong>🤖 AI Insights:</strong><br>${analyticsText}</p>
                     `;
                 } catch (err) {
                     card.innerHTML = `
