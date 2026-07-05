@@ -1,69 +1,13 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Analytics Dashboard</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <header class="app-header">
-        <div class="header-content">
-            <h1>Student Analytics Dashboard</h1>
-            <div id="status-section" class="status-badge">
-                <span class="status-dot pulsing"></span>
-                <p>Backend: <strong id="backend-status-text">Checking...</strong></p>
-            </div>
-        </div>
-    </header>
-    
-    <main class="app-main">
-        <section id="registration-section" class="glass-card">
-            <h2>Register New Student</h2>
-            <p class="subtitle">Enter usernames below to track metrics</p>
-            <form id="registration-form">
-                <div class="input-group">
-                    <label for="name">Full Name</label>
-                    <input type="text" id="name" name="name" placeholder="John Doe" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="github">GitHub Username</label>
-                    <input type="text" id="github" name="github" placeholder="johndoe123" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="leetcode">LeetCode Username</label>
-                    <input type="text" id="leetcode" name="leetcode" placeholder="johndoe" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="kaggle">Kaggle Username</label>
-                    <input type="text" id="kaggle" name="kaggle" placeholder="johndoe" required>
-                </div>
-
-                <button type="submit" class="btn-primary">Register Student</button>
-            </form>
-            <p id="form-message"></p>
-        </section>
-
-        <section id="dashboard-section" class="dashboard-container">
-            <div class="dashboard-header">
-                <h2>Student Overview</h2>
-                <button id="load-dashboard-btn" class="btn-secondary">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: text-bottom; margin-right: 4px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.27l5.25-4.29"/></svg>
-                    Load All Metrics
-                </button>
-            </div>
-            
-            <div id="dashboard-content" class="dashboard-grid">
-                <!-- Student cards will be injected here -->
-            </div>
-        </section>
-    </main>
-    <script src="app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>
