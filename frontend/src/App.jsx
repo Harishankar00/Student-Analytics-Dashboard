@@ -53,6 +53,101 @@ function App() {
   const [goalTarget, setGoalTarget] = useState('');
   const [goalStatusMsg, setGoalStatusMsg] = useState('');
 
+  // Admin View states
+  const [isAdminView, setIsAdminView] = useState(false);
+  const [cohortData, setCohortData] = useState(null);
+  const [studentsList, setStudentsList] = useState([]);
+  const [compareEmail1, setCompareEmail1] = useState('');
+  const [compareEmail2, setCompareEmail2] = useState('');
+  const [comparisonResult, setComparisonResult] = useState(null);
+  const [comparisonLoading, setComparisonLoading] = useState(false);
+
+  // AI Recommendation states
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiRecs, setAiRecs] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const [adminAiSummary, setAdminAiSummary] = useState('');
+  const [adminAiRecs, setAdminAiRecs] = useState([]);
+  const [adminAiLoading, setAdminAiLoading] = useState(false);
+
+  const fetchAiSummary = async (userEmail) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/student/${userEmail}/ai-summary`);
+      if (res.ok) {
+        const data = await res.json();
+        setAiSummary(data.summary);
+        setAiRecs(data.recommendations);
+      }
+    } catch (err) {
+      console.error("Error fetching AI summary:", err);
+    }
+    setAiLoading(false);
+  };
+
+  const fetchAdminAiSummary = async () => {
+    setAdminAiLoading(true);
+    try {
+      const res = await fetch('http://127.0.0.1:5000/api/admin/cohort/ai-summary');
+      if (res.ok) {
+        const data = await res.json();
+        setAdminAiSummary(data.summary);
+        setAdminAiRecs(data.recommendations);
+      }
+    } catch (err) {
+      console.error("Error fetching admin AI summary:", err);
+    }
+    setAdminAiLoading(false);
+  };
+
+  const fetchCohortData = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:5000/api/admin/cohort');
+      if (res.ok) {
+        const data = await res.json();
+        setCohortData(data);
+      }
+    } catch (err) {
+      console.error("Error fetching cohort data:", err);
+    }
+  };
+
+  const fetchStudentsList = async () => {
+    try {
+      const res = await fetch('http://127.0.0.1:5000/api/students');
+      if (res.ok) {
+        const data = await res.json();
+        setStudentsList(data);
+      }
+    } catch (err) {
+      console.error("Error fetching students list:", err);
+    }
+  };
+
+  const fetchComparison = async () => {
+    if (!compareEmail1 || !compareEmail2) return;
+    setComparisonLoading(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/admin/comparison?email1=${compareEmail1}&email2=${compareEmail2}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComparisonResult(data);
+      }
+    } catch (err) {
+      console.error("Error fetching comparison:", err);
+    }
+    setComparisonLoading(false);
+  };
+
+  useEffect(() => {
+    if (isAdminView) {
+      fetchCohortData();
+      fetchStudentsList();
+      fetchAdminAiSummary();
+    }
+  }, [isAdminView]);
+
   const fetchGoals = async (userEmail) => {
     try {
       const res = await fetch(`http://127.0.0.1:5000/api/student/${userEmail}/goals`);
@@ -128,6 +223,7 @@ function App() {
         setDashboardData(data);
         setHasSetup(true);
         fetchGoals(userEmail);
+        fetchAiSummary(userEmail);
         // Fetch historical snapshots for Phase 4
         const histRes = await fetch(`http://127.0.0.1:5000/api/student/${userEmail}/history`);
         if (histRes.ok) {
@@ -355,20 +451,270 @@ function App() {
         {/* Header */}
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', background: 'white', padding: '1.5rem 2rem', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#111827' }}>Student Dashboard</h1>
-            <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>{student?.name}</p>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#111827' }}>
+              {isAdminView ? 'Admin Analytics Portal' : 'Student Dashboard'}
+            </h1>
+            <p style={{ margin: '0.25rem 0 0 0', color: '#6b7280', fontSize: '0.9rem' }}>
+              {isAdminView ? 'Class Cohort Analytics & Directory' : student?.name}
+            </p>
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={() => setHasSetup(false)} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '500' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <button 
+              onClick={() => setIsAdminView(!isAdminView)} 
+              style={{ 
+                padding: '0.5rem 1rem', 
+                cursor: 'pointer', 
+                background: isAdminView ? '#4f46e5' : '#e0e7ff', 
+                color: isAdminView ? 'white' : '#4f46e5', 
+                border: 'none', 
+                borderRadius: '6px', 
+                fontWeight: '600',
+                fontSize: '0.9rem'
+              }}
+            >
+              {isAdminView ? 'Student View' : 'Admin Portal'}
+            </button>
+            <button onClick={() => setHasSetup(false)} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '500', fontSize: '0.9rem' }}>
               Edit Profiles
             </button>
-            <button onClick={handleSignOut} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', fontWeight: '500' }}>
+            <button onClick={handleSignOut} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '6px', fontWeight: '500', fontSize: '0.9rem' }}>
               Sign Out
             </button>
           </div>
         </header>
 
-        {/* Metrics Grid */}
+        {isAdminView ? (
+          <div>
+            {adminAiSummary && (
+              <div style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 15px rgba(49, 46, 129, 0.15)' }}>
+                <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                  🤖 Cohort AI Advisor Recommendations
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', fontStyle: 'italic', opacity: 0.9 }}>
+                  "{adminAiSummary}"
+                </p>
+                {adminAiRecs.length > 0 && (
+                  <ul style={{ margin: '1rem 0 0 0', paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    {adminAiRecs.map((rec, idx) => (
+                      <li key={idx} style={{ opacity: 0.85 }}>{rec}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* Cohort Overview Row */}
+            {cohortData ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #4f46e5' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>Total Enrolled Students</p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '2.25rem', fontWeight: 'bold', color: '#111827' }}>{cohortData.totalStudents}</p>
+                </div>
+                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #10b981' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>Avg Commits per Student</p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '2.25rem', fontWeight: 'bold', color: '#10b981' }}>{cohortData.averages?.avgGitHubCommits || 0}</p>
+                </div>
+                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>Avg LeetCode Solves</p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '2.25rem', fontWeight: 'bold', color: '#f59e0b' }}>{cohortData.averages?.avgLeetCode || 0}</p>
+                </div>
+                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #3b82f6' }}>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 'bold' }}>Class Activity Rate</p>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '2.25rem', fontWeight: 'bold', color: '#3b82f6' }}>{cohortData.activeRatio || 0}%</p>
+                </div>
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.9rem', color: '#6b7280' }}>Loading cohort overview...</p>
+            )}
+
+            {/* Directory Table and Comparison Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '1.5rem' }}>
+              
+              {/* Directory Card */}
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Student Directory</h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#4b5563' }}>
+                        <th style={{ padding: '0.75rem' }}>Email</th>
+                        <th style={{ padding: '0.75rem' }}>GitHub</th>
+                        <th style={{ padding: '0.75rem' }}>LeetCode</th>
+                        <th style={{ padding: '0.75rem' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {studentsList.map((stud) => (
+                        <tr key={stud.name} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.75rem', fontWeight: '500', color: '#111827' }}>{stud.name}</td>
+                          <td style={{ padding: '0.75rem', color: '#4b5563' }}>{stud.github}</td>
+                          <td style={{ padding: '0.75rem', color: '#4b5563' }}>{stud.leetcode}</td>
+                          <td style={{ padding: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                            <button 
+                              onClick={async () => {
+                                await checkStudentSetup(stud.name);
+                                setIsAdminView(false);
+                              }}
+                              style={{ padding: '0.25rem 0.5rem', cursor: 'pointer', background: '#e0e7ff', color: '#4f46e5', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}
+                            >
+                              View
+                            </button>
+                            <button 
+                              onClick={() => {
+                                if (!compareEmail1) setCompareEmail1(stud.name);
+                                else if (!compareEmail2) setCompareEmail2(stud.name);
+                              }}
+                              style={{ padding: '0.25rem 0.5rem', cursor: 'pointer', background: '#ecfdf5', color: '#059669', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}
+                            >
+                              Select
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Comparison Panel Card */}
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Student Comparison Tool</h3>
+                
+                {/* Selectors */}
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem' }}>STUDENT A</label>
+                    <select 
+                      value={compareEmail1} 
+                      onChange={(e) => setCompareEmail1(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
+                    >
+                      <option value="">Select Student A</option>
+                      {studentsList.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                    </select>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem' }}>STUDENT B</label>
+                    <select 
+                      value={compareEmail2} 
+                      onChange={(e) => setCompareEmail2(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
+                    >
+                      <option value="">Select Student B</option>
+                      {studentsList.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <button 
+                    onClick={fetchComparison}
+                    disabled={!compareEmail1 || !compareEmail2}
+                    style={{ flex: 1, padding: '0.65rem', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: (!compareEmail1 || !compareEmail2) ? 0.5 : 1 }}
+                  >
+                    {comparisonLoading ? 'Comparing...' : 'Compare Side-by-Side'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setCompareEmail1('');
+                      setCompareEmail2('');
+                      setComparisonResult(null);
+                    }}
+                    style={{ padding: '0.65rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                {/* Overlaid Radar Chart */}
+                {comparisonResult && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    
+                    {/* Radar Chart */}
+                    <div style={{ height: 260, width: '100%', display: 'flex', justifyContent: 'center' }}>
+                      <ResponsiveContainer>
+                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={[
+                          { subject: 'Problem Solving', A: comparisonResult.studentA.evaluation.problem_solving, B: comparisonResult.studentB.evaluation.problem_solving, fullMark: 100 },
+                          { subject: 'Development', A: comparisonResult.studentA.evaluation.development, B: comparisonResult.studentB.evaluation.development, fullMark: 100 },
+                          { subject: 'Data Science', A: comparisonResult.studentA.evaluation.data_science, B: comparisonResult.studentB.evaluation.data_science, fullMark: 100 },
+                          { subject: 'Consistency', A: comparisonResult.studentA.evaluation.consistency, B: comparisonResult.studentB.evaluation.consistency, fullMark: 100 }
+                        ]}>
+                          <PolarGrid stroke="#e5e7eb" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 10 }} />
+                          <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                          <Radar name={comparisonResult.studentA.profile.github} dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.35} />
+                          <Radar name={comparisonResult.studentB.profile.github} dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.35} />
+                          <Legend />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Comparison Table */}
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center' }}>
+                      <thead>
+                        <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Metric</th>
+                          <th style={{ padding: '0.5rem', color: '#4f46e5' }}>{comparisonResult.studentA.profile.github} (A)</th>
+                          <th style={{ padding: '0.5rem', color: '#10b981' }}>{comparisonResult.studentB.profile.github} (B)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>GitHub Repos</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.github?.repos || 0}</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.github?.repos || 0}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>GitHub Commits</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.github?.totalCommits || 0}</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.github?.totalCommits || 0}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>LeetCode Solved</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.leetcode?.totalSolved || 0}</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.leetcode?.totalSolved || 0}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>Kaggle Datasets</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.kaggle?.datasets || 0}</td>
+                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.kaggle?.datasets || 0}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>Active Status</td>
+                          <td style={{ padding: '0.5rem', color: comparisonResult.studentA.profile.status === 'Active' ? '#059669' : '#dc2626', fontWeight: '600' }}>{comparisonResult.studentA.profile.status}</td>
+                          <td style={{ padding: '0.5rem', color: comparisonResult.studentB.profile.status === 'Active' ? '#059669' : '#dc2626', fontWeight: '600' }}>{comparisonResult.studentB.profile.status}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+
+                  </div>
+                )}
+
+              </div>
+
+            </div>
+          </div>
+        ) : (
+          <div>
+            {aiSummary && (
+              <div style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 15px rgba(49, 46, 129, 0.15)' }}>
+                <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                  🤖 Personalized AI Coach Analysis
+                </h3>
+                <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', fontStyle: 'italic', opacity: 0.9 }}>
+                  "{aiSummary}"
+                </p>
+                {aiRecs.length > 0 && (
+                  <ul style={{ margin: '1rem 0 0 0', paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
+                    {aiRecs.map((rec, idx) => (
+                      <li key={idx} style={{ opacity: 0.85 }}>{rec}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {/* Metrics Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '1.5rem' }}>
           
           {/* GitHub Card */}
@@ -691,6 +1037,8 @@ function App() {
           )}
           
         </div>
+      </div>
+    )}
         
         {/* Background Sync Notice */}
         {(!metrics?.github || !metrics?.leetcode) && (

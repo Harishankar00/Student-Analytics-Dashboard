@@ -690,6 +690,329 @@ def delete_goal(email, goal_id):
     except Exception as err:
         return jsonify({"error": str(err)}), 500
 
+@app.route('/api/admin/cohort', methods=['GET'])
+def get_cohort_analytics():
+    try:
+        students = load_data()
+        total_students = len(students)
+        if total_students == 0:
+            return jsonify({
+                "totalStudents": 0,
+                "averages": {"avgLeetCode": 0, "avgGitHubCommits": 0, "avgKaggleNotebooks": 0},
+                "activeRatio": 0
+            })
+            
+        total_solves = 0
+        total_commits = 0
+        total_notebooks = 0
+        active_count = 0
+        
+        for student in students:
+            email = student.get("name")
+            if not email:
+                continue
+            snapshots_ref = db.collection('students').document(email).collection('snapshots')
+            latest_snap_query = snapshots_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).get()
+            
+            if latest_snap_query:
+                snap = latest_snap_query[0].to_dict()
+                metrics = snap.get("metrics", {})
+                
+                total_solves += metrics.get("leetcode", {}).get("totalSolved", 0) if metrics.get("leetcode") else 0
+                total_commits += metrics.get("github", {}).get("totalCommits", 0) if metrics.get("github") else 0
+                total_notebooks += metrics.get("kaggle", {}).get("notebooks", 0) if metrics.get("kaggle") else 0
+                
+            snaps_query = snapshots_ref.order_by('timestamp').get()
+            if len(snaps_query) >= 2:
+                oldest = snaps_query[0].to_dict()
+                newest = snaps_query[-1].to_dict()
+                
+                old_solved = oldest.get("metrics", {}).get("leetcode", {}).get("totalSolved", 0) if oldest.get("metrics", {}).get("leetcode") else 0
+                old_repos = oldest.get("metrics", {}).get("github", {}).get("repos", 0) if oldest.get("metrics", {}).get("github") else 0
+                
+                new_solved = newest.get("metrics", {}).get("leetcode", {}).get("totalSolved", 0) if newest.get("metrics", {}).get("leetcode") else 0
+                new_repos = newest.get("metrics", {}).get("github", {}).get("repos", 0) if newest.get("metrics", {}).get("github") else 0
+                
+                if (new_solved - old_solved) > 0 or (new_repos - old_repos) > 0:
+                    active_count += 1
+                    
+        return jsonify({
+            "totalStudents": total_students,
+            "averages": {
+                "avgLeetCode": round(total_solves / total_students, 1),
+                "avgGitHubCommits": round(total_commits / total_students, 1),
+                "avgKaggleNotebooks": round(total_notebooks / total_students, 1)
+            },
+            "activeRatio": round((active_count / total_students) * 100, 1)
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
+
+def get_student_side_data(email):
+    students = load_data()
+    student = next((s for s in students if s.get("name") == email), None)
+    if not student:
+        return None
+        
+    snapshots_ref = db.collection('students').document(email).collection('snapshots')
+    latest_snap_query = snapshots_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).get()
+    
+    latest_metrics = {}
+    if latest_snap_query:
+        latest_metrics = latest_snap_query[0].to_dict().get("metrics", {})
+        
+    leetcode_metrics = latest_metrics.get("leetcode", {}) or {}
+    easy_count = leetcode_metrics.get("easy", 0) if leetcode_metrics else 0
+    med_count = leetcode_metrics.get("medium", 0) if leetcode_metrics else 0
+    hard_count = leetcode_metrics.get("hard", 0) if leetcode_metrics else 0
+    problem_solving_score = min(100, (easy_count * 5 + med_count * 15 + hard_count * 30))
+    
+    github_metrics = latest_metrics.get("github", {}) or {}
+    repos_count = github_metrics.get("repos", 0) if github_metrics else 0
+    commits_count = github_metrics.get("totalCommits", 0) if github_metrics else 0
+    dev_activity_score = min(100, (repos_count * 2 + commits_count // 3))
+    
+    kaggle_metrics = latest_metrics.get("kaggle", {}) or {}
+    datasets_count = kaggle_metrics.get("datasets", 0) if kaggle_metrics else 0
+    notebooks_count = kaggle_metrics.get("notebooks", 0) if kaggle_metrics else 0
+    data_science_score = min(100, (datasets_count * 10 + notebooks_count * 4))
+    
+    current_streak = github_metrics.get("currentStreak", 0) if github_metrics else 0
+    longest_streak = github_metrics.get("longestStreak", 0) if github_metrics else 0
+    consistency_score = min(100, (current_streak * 10 + longest_streak * 2))
+    
+    evaluation = {
+        "problem_solving": problem_solving_score,
+        "development": dev_activity_score,
+        "data_science": data_science_score,
+        "consistency": consistency_score
+    }
+    
+    consistency = "Unknown"
+    try:
+        snaps_query = snapshots_ref.order_by('timestamp').get()
+        if len(snaps_query) >= 2:
+            oldest = snaps_query[0].to_dict()
+            newest = snaps_query[-1].to_dict()
+            
+            old_solved = oldest.get("metrics", {}).get("leetcode", {}).get("totalSolved", 0) if oldest.get("metrics", {}).get("leetcode") else 0
+            old_repos = oldest.get("metrics", {}).get("github", {}).get("repos", 0) if oldest.get("metrics", {}).get("github") else 0
+            
+            new_solved = newest.get("metrics", {}).get("leetcode", {}).get("totalSolved", 0) if newest.get("metrics", {}).get("leetcode") else 0
+            new_repos = newest.get("metrics", {}).get("github", {}).get("repos", 0) if newest.get("metrics", {}).get("github") else 0
+            
+            if (new_solved - old_solved) > 0 or (new_repos - old_repos) > 0:
+                consistency = "Active"
+            else:
+                consistency = "Inactive"
+    except:
+        pass
+        
+    return {
+        "profile": {
+            "name": student.get("name"),
+            "github": student.get("github"),
+            "leetcode": student.get("leetcode"),
+            "kaggle": student.get("kaggle"),
+            "status": consistency
+        },
+        "metrics": latest_metrics,
+        "evaluation": evaluation
+    }
+
+@app.route('/api/admin/comparison', methods=['GET'])
+def get_student_comparison():
+    email1 = request.args.get('email1')
+    email2 = request.args.get('email2')
+    if not email1 or not email2:
+        return jsonify({"error": "Missing email parameters"}), 400
+        
+    try:
+        data1 = get_student_side_data(email1)
+        data2 = get_student_side_data(email2)
+        
+        if not data1 or not data2:
+            return jsonify({"error": "One or both students not found"}), 404
+            
+        return jsonify({
+            "studentA": data1,
+            "studentB": data2
+        }), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
+
+def generate_ai_analysis(prompt):
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [{
+            "parts": [{
+                "text": prompt
+            }]
+        }]
+    }
+    headers = {"Content-Type": "application/json"}
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=12)
+        if response.status_code == 200:
+            result = response.json()
+            return result["candidates"][0]["content"]["parts"][0]["text"]
+        else:
+            print(f"Gemini API returned status code {response.status_code}: {response.text}")
+    except Exception as e:
+        print(f"Error querying Gemini API: {e}")
+    return None
+
+def clean_and_parse_json(text):
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines[-1].startswith("```"):
+            lines = lines[:-1]
+        text = "\n".join(lines).strip()
+    return json.loads(text)
+
+def rule_based_student_summary(metrics, evaluation):
+    focus = "Balanced"
+    leetcode_solved = metrics.get("leetcode", {}).get("totalSolved", 0) if metrics.get("leetcode") else 0
+    github_commits = metrics.get("github", {}).get("totalCommits", 0) if metrics.get("github") else 0
+    
+    if leetcode_solved > github_commits * 1.5:
+        focus = "DSA Focused"
+    elif github_commits > leetcode_solved * 1.5:
+        focus = "Project Focused"
+        
+    summary = f"Based on your profile, your primary focus is {focus} with a consistency score of {evaluation.get('consistency', 0)}/100."
+    recommendations = []
+    
+    if focus == "DSA Focused":
+        recommendations.append("Build projects: Link your data structure skills with real-world project development by starting a new repository on GitHub.")
+        recommendations.append("Deploy a live project: Deploy your codebase so others can view it.")
+    elif focus == "Project Focused":
+        recommendations.append("Practice algorithms: Dedicate 30 minutes a day to LeetCode to ensure you pass competitive coding interview screenings.")
+        recommendations.append("Vary challenges: Solve medium-level array and tree problems.")
+    else:
+        recommendations.append("Great balance: Keep building projects and practicing LeetCode questions.")
+        recommendations.append("Document your work: Write a comprehensive README.md file for your best GitHub projects.")
+        
+    recommendations.append("Set goals: Use the Goal Tracker below to set daily/weekly practice targets and track progress.")
+    
+    return {
+        "summary": summary,
+        "recommendations": recommendations,
+        "is_ai": False
+    }
+
+def rule_based_cohort_summary(cohort_data):
+    avg_solves = cohort_data.get("averages", {}).get("avgLeetCode", 0)
+    avg_commits = cohort_data.get("averages", {}).get("avgGitHubCommits", 0)
+    active_ratio = cohort_data.get("activeRatio", 0)
+    
+    summary = f"The class consists of {cohort_data.get('totalStudents', 0)} students. The active participation rate stands at {active_ratio}%."
+    recommendations = []
+    
+    if active_ratio < 50:
+        recommendations.append("Engagement warning: Class activity is below 50%. Consider launching a coding sprint or weekly task challenge to motivate students.")
+    else:
+        recommendations.append("Healthy momentum: Class activity rate is strong. Encourage peer reviews and pair programming sessions.")
+        
+    if avg_solves < avg_commits:
+        recommendations.append("Focus target: Students are active in development but lagging in algorithm practice. Assign 3-5 medium LeetCode exercises.")
+    else:
+        recommendations.append("Focus target: Good practice on algorithms. Encourage students to push their local solutions to GitHub repositories.")
+        
+    return {
+        "summary": summary,
+        "recommendations": recommendations,
+        "is_ai": False
+    }
+
+@app.route('/api/student/<email>/ai-summary', methods=['GET'])
+def get_student_ai_summary(email):
+    try:
+        data = get_student_side_data(email)
+        if not data:
+            return jsonify({"error": "Student not found"}), 404
+            
+        metrics = data["metrics"]
+        evaluation = data["evaluation"]
+        
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            prompt = f"""
+            You are an expert AI Coding Coach. Analyze this student's coding metrics and provide a brief summary and 3 recommendations.
+            Keep the response in strict JSON format:
+            {{
+              "summary": "1-2 sentence analysis summarizing their focus (DSA vs Projects) and consistency.",
+              "recommendations": [
+                "Actionable tip 1",
+                "Actionable tip 2",
+                "Actionable tip 3"
+              ]
+            }}
+
+            Student Data:
+            - GitHub: {metrics.get('github', {}).get('repos', 0) if metrics.get('github') else 0} repositories, {metrics.get('github', {}).get('totalCommits', 0) if metrics.get('github') else 0} commits.
+            - LeetCode: {metrics.get('leetcode', {}).get('totalSolved', 0) if metrics.get('leetcode') else 0} solved (Easy: {metrics.get('leetcode', {}).get('easy', 0) if metrics.get('leetcode') else 0}, Med: {metrics.get('leetcode', {}).get('medium', 0) if metrics.get('leetcode') else 0}, Hard: {metrics.get('leetcode', {}).get('hard', 0) if metrics.get('leetcode') else 0}).
+            - Kaggle: {metrics.get('kaggle', {}).get('datasets', 0) if metrics.get('kaggle') else 0} datasets, {metrics.get('kaggle', {}).get('notebooks', 0) if metrics.get('kaggle') else 0} notebooks.
+            - Consistency Score: {evaluation.get('consistency', 0)}/100.
+            """
+            ai_text = generate_ai_analysis(prompt)
+            if ai_text:
+                try:
+                    parsed = clean_and_parse_json(ai_text)
+                    parsed["is_ai"] = True
+                    return jsonify(parsed), 200
+                except Exception as parse_err:
+                    print(f"Failed to parse Gemini JSON: {parse_err}. Text: {ai_text}")
+                    
+        return jsonify(rule_based_student_summary(metrics, evaluation)), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
+
+@app.route('/api/admin/cohort/ai-summary', methods=['GET'])
+def get_cohort_ai_summary():
+    try:
+        cohort_res = get_cohort_analytics()
+        cohort_data = cohort_res[0].json
+        
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if api_key:
+            prompt = f"""
+            You are an expert Education Administrator AI. Analyze this cohort's performance metrics and provide a summary and 3 recommendations.
+            Keep the response in strict JSON format:
+            {{
+              "summary": "1-2 sentence summary of overall class engagement and performance.",
+              "recommendations": [
+                "Actionable item for instructor 1",
+                "Actionable item for instructor 2",
+                "Actionable item for instructor 3"
+              ]
+            }}
+
+            Cohort Data:
+            - Total Students: {cohort_data.get('totalStudents', 0)}
+            - Average GitHub Commits: {cohort_data.get('averages', {}).get('avgGitHubCommits', 0)}
+            - Average LeetCode Solves: {cohort_data.get('averages', {}).get('avgLeetCode', 0)}
+            - Class Active Ratio: {cohort_data.get('activeRatio', 0)}%
+            """
+            ai_text = generate_ai_analysis(prompt)
+            if ai_text:
+                try:
+                    parsed = clean_and_parse_json(ai_text)
+                    parsed["is_ai"] = True
+                    return jsonify(parsed), 200
+                except Exception as parse_err:
+                    print(f"Failed to parse Gemini JSON for cohort: {parse_err}. Text: {ai_text}")
+                    
+        return jsonify(rule_based_cohort_summary(cohort_data)), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
+
 if __name__ == '__main__':
     worker = threading.Thread(target=automated_snapshot_worker, daemon=True)
     worker.start()
