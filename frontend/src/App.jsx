@@ -71,17 +71,7 @@ function App() {
         const histRes = await fetch(`http://127.0.0.1:5000/api/student/${userEmail}/history`);
         if (histRes.ok) {
           const histData = await histRes.json();
-          // Format for Recharts using Date
-          const formatted = histData.map(snap => {
-             const date = new Date(snap.timestamp);
-             const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-             return {
-                time: dateStr,
-                LeetCode: snap.metrics?.leetcode?.totalSolved || 0,
-                GitHubRepos: snap.metrics?.github?.repos || 0
-             };
-          });
-          setHistory(formatted);
+          setHistory(histData);
         }
       } else {
         setHasSetup(false);
@@ -466,7 +456,7 @@ function App() {
                   <PieChart>
                     <Pie data={metrics.github.languages.slice(0, 5)} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
                       {metrics.github.languages.slice(0, 5).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
@@ -480,7 +470,7 @@ function App() {
           {/* Historical Timeline - GitHub */}
           {history.length > 0 && (
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #111827' }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#374151' }}>GitHub Growth (Repos)</h3>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#374151' }}>GitHub Daily Commits</h3>
               <div style={{ height: 250, width: '100%' }}>
                 <ResponsiveContainer>
                   <AreaChart data={history}>
@@ -494,17 +484,17 @@ function App() {
                     <XAxis dataKey="time" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                    <Area type="monotone" dataKey="GitHubRepos" name="Repositories" stroke="#111827" strokeWidth={3} fillOpacity={1} fill="url(#colorGitHub)" />
+                    <Area type="monotone" dataKey="commits" name="Commits" stroke="#111827" strokeWidth={3} fillOpacity={1} fill="url(#colorGitHub)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
           )}
-
+ 
           {/* Historical Timeline - LeetCode */}
           {history.length > 0 && (
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #f59e0b' }}>
-              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#374151' }}>LeetCode Growth (Solves)</h3>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.1rem', color: '#374151' }}>LeetCode Daily Solves</h3>
               <div style={{ height: 250, width: '100%' }}>
                 <ResponsiveContainer>
                   <AreaChart data={history}>
@@ -518,7 +508,7 @@ function App() {
                     <XAxis dataKey="time" stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
                     <YAxis stroke="#9ca3af" fontSize={12} tickLine={false} axisLine={false} />
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }} />
-                    <Area type="monotone" dataKey="LeetCode" name="Total Solved" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorLeetCode)" />
+                    <Area type="monotone" dataKey="solves" name="Problems Solved" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorLeetCode)" />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

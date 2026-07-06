@@ -102,9 +102,11 @@ def fetch_github(username):
                 calendar = user_data["contributionsCollection"]["contributionCalendar"]
                 total_commits = calendar["totalContributions"]
                 days = []
+                raw_days = {}
                 for week in calendar["weeks"]:
                     for day in week["contributionDays"]:
                         days.append(day["contributionCount"])
+                        raw_days[day["date"]] = day["contributionCount"]
                         
                 current_streak = 0
                 longest_streak = 0
@@ -132,9 +134,15 @@ def fetch_github(username):
                         
                     if r.get("primaryLanguage"):
                         lang = r["primaryLanguage"]["name"]
-                        lang_counts[lang] = lang_counts.get(lang, 0) + 1
+                        color = r["primaryLanguage"]["color"] or "#cccccc"
+                        if lang not in lang_counts:
+                            lang_counts[lang] = {"count": 0, "color": color}
+                        lang_counts[lang]["count"] += 1
                         
-                languages = [{"name": k, "count": v} for k, v in sorted(lang_counts.items(), key=lambda x: x[1], reverse=True)]
+                languages = [
+                    {"name": k, "count": v["count"], "color": v["color"]}
+                    for k, v in sorted(lang_counts.items(), key=lambda x: x[1]["count"], reverse=True)
+                ]
                 
                 return {
                     "followers": user_data["followers"]["totalCount"],
@@ -143,7 +151,8 @@ def fetch_github(username):
                     "currentStreak": current_streak,
                     "longestStreak": longest_streak,
                     "languages": languages,
-                    "topProjects": top_projects
+                    "topProjects": top_projects,
+                    "rawDays": raw_days
                 }
         else:
             # Fallback to REST API
@@ -178,6 +187,9 @@ def fetch_leetcode(username):
                 count
               }
             }
+            userCalendar {
+              submissionCalendar
+            }
           }
         }
         """
@@ -196,7 +208,8 @@ def fetch_leetcode(username):
             if not data.get("data") or not data["data"].get("matchedUser"):
                 return None
                 
-            stats = data["data"]["matchedUser"]["submitStats"]["acSubmissionNum"]
+            matched_user = data["data"]["matchedUser"]
+            stats = matched_user["submitStats"]["acSubmissionNum"]
             result = {"totalSolved": 0, "easySolved": 0, "mediumSolved": 0, "hardSolved": 0}
             
             for stat in stats:
@@ -209,6 +222,14 @@ def fetch_leetcode(username):
                 elif stat["difficulty"] == "Hard":
                     result["hardSolved"] = stat["count"]
                     
+            calendar_str = matched_user.get("userCalendar", {}).get("submissionCalendar", "{}")
+            submission_calendar = json.loads(calendar_str)
+            raw_solves = {}
+            for ts, count in submission_calendar.items():
+                date_str = datetime.datetime.utcfromtimestamp(int(ts)).strftime('%Y-%m-%d')
+                raw_solves[date_str] = count
+                
+            result["rawSolves"] = raw_solves
             return result
     except Exception as e:
         print(f"Error fetching LeetCode for {username}: {e}")
@@ -332,18 +353,35 @@ def get_students():
 
 @app.route('/api/student/<email>/history', methods=['GET'])
 def get_student_history(email):
-    snapshots = load_snapshots()
+    students = load_data()
+    student = next((s for s in students if s.get("name") == email), None)
+    if not student:
+        return jsonify([])
+        
+    github_user = student.get("github")
+    leetcode_user = student.get("leetcode")
+    
+    github_data = fetch_github(github_user)
+    leetcode_data = fetch_leetcode(leetcode_user)
+    
+    github_days = github_data.get("rawDays", {}) if github_data else {}
+    leetcode_days = leetcode_data.get("rawSolves", {}) if leetcode_data else {}
+    
+    today = datetime.date.today()
     history_data = []
     
-    for snap in snapshots:
-        for s in snap.get("students", []):
-            if s.get("name") == email:
-                history_data.append({
-                    "timestamp": snap.get("timestamp"),
-                    "metrics": s.get("metrics", {})
-                })
-                break
-                
+    for i in range(29, -1, -1):
+        d = today - datetime.timedelta(days=i)
+        date_str = d.strftime('%Y-%m-%d')
+        display_date = d.strftime('%b %d')
+        
+        history_data.append({
+            "timestamp": date_str,
+            "time": display_date,
+            "commits": github_days.get(date_str, 0),
+            "solves": leetcode_days.get(date_str, 0)
+        })
+        
     return jsonify(history_data)
 
 @app.route('/api/student/<email>', methods=['GET'])
