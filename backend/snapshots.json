@@ -1,39 +1,344 @@
 [
     {
-        "timestamp": "2026-07-04T21:05:22.282930",
+        "timestamp": "2026-06-30T14:50:52.360328",
         "students": [
             {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
+                "name": "harishankarbb2005@gmail.com",
                 "github": "Harishankar00",
                 "leetcode": "Harishankar_M",
                 "kaggle": "harishankar00",
                 "metrics": {
                     "github": {
-                        "repos": 39,
-                        "followers": 2
+                        "followers": 2,
+                        "repos": 22,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
+                    },
+                    "leetcode": {
+                        "totalSolved": 3,
+                        "easy": 3,
+                        "medium": 0,
+                        "hard": 0
+                    },
+                    "kaggle": {
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "timestamp": "2026-07-01T14:50:52.360328",
+        "students": [
+            {
+                "name": "harishankarbb2005@gmail.com",
+                "github": "Harishankar00",
+                "leetcode": "Harishankar_M",
+                "kaggle": "harishankar00",
+                "metrics": {
+                    "github": {
+                        "followers": 2,
+                        "repos": 24,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
+                    },
+                    "leetcode": {
+                        "totalSolved": 4,
+                        "easy": 4,
+                        "medium": 0,
+                        "hard": 0
+                    },
+                    "kaggle": {
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "timestamp": "2026-07-02T14:50:52.360328",
+        "students": [
+            {
+                "name": "harishankarbb2005@gmail.com",
+                "github": "Harishankar00",
+                "leetcode": "Harishankar_M",
+                "kaggle": "harishankar00",
+                "metrics": {
+                    "github": {
+                        "followers": 2,
+                        "repos": 24,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
+                    },
+                    "leetcode": {
+                        "totalSolved": 4,
+                        "easy": 4,
+                        "medium": 0,
+                        "hard": 0
+                    },
+                    "kaggle": {
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "timestamp": "2026-07-03T14:50:52.360328",
+        "students": [
+            {
+                "name": "harishankarbb2005@gmail.com",
+                "github": "Harishankar00",
+                "leetcode": "Harishankar_M",
+                "kaggle": "harishankar00",
+                "metrics": {
+                    "github": {
+                        "followers": 2,
+                        "repos": 25,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
+                    },
+                    "leetcode": {
+                        "totalSolved": 6,
+                        "easy": 6,
+                        "medium": 0,
+                        "hard": 0
+                    },
+                    "kaggle": {
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "timestamp": "2026-07-04T14:50:52.360328",
+        "students": [
+            {
+                "name": "harishankarbb2005@gmail.com",
+                "github": "Harishankar00",
+                "leetcode": "Harishankar_M",
+                "kaggle": "harishankar00",
+                "metrics": {
+                    "github": {
+                        "followers": 2,
+                        "repos": 27,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
+                    },
+                    "leetcode": {
+                        "totalSolved": 7,
+                        "easy": 7,
+                        "medium": 0,
+                        "hard": 0
+                    },
+                    "kaggle": {
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "timestamp": "2026-07-05T14:50:52.360328",
+        "students": [
+            {
+                "name": "harishankarbb2005@gmail.com",
+                "github": "Harishankar00",
+                "leetcode": "Harishankar_M",
+                "kaggle": "harishankar00",
+                "metrics": {
+                    "github": {
+                        "followers": 2,
+                        "repos": 28,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
+                    },
+                    "leetcode": {
+                        "totalSolved": 7,
+                        "easy": 7,
+                        "medium": 0,
+                        "hard": 0
+                    },
+                    "kaggle": {
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "timestamp": "2026-07-06T14:50:52.360328",
+        "students": [
+            {
+                "name": "harishankarbb2005@gmail.com",
+                "github": "Harishankar00",
+                "leetcode": "Harishankar_M",
+                "kaggle": "harishankar00",
+                "metrics": {
+                    "github": {
+                        "followers": 2,
+                        "repos": 29,
+                        "totalCommits": 195,
+                        "currentStreak": 0,
+                        "longestStreak": 12,
+                        "languages": [
+                            {
+                                "name": "Python",
+                                "count": 12
+                            },
+                            {
+                                "name": "JavaScript",
+                                "count": 8
+                            },
+                            {
+                                "name": "TypeScript",
+                                "count": 6
+                            },
+                            {
+                                "name": "Jupyter Notebook",
+                                "count": 4
+                            }
+                        ],
+                        "topProjects": []
                     },
                     "leetcode": {
                         "totalSolved": 8,
@@ -42,989 +347,10 @@
                         "hard": 0
                     },
                     "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:34:30.874136",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:36:46.989061",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:40:53.086342",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:42:08.343597",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:43:21.274524",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:44:39.253018",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T21:45:55.947409",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T22:59:01.348864",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": null,
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": null,
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:22:26.904429",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:40:14.614553",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:43:21.164048",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:45:27.688808",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:50:38.987200",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:53:47.901652",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 15,
-                        "followers": 120
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 15,
-                        "followers": 120
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:54:49.345293",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 15,
-                        "followers": 120
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 15,
-                        "followers": 120
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-04T23:55:51.297539",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 15,
-                        "followers": 120
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 15,
-                        "followers": 120
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-05T00:53:46.064757",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-05T00:54:47.703078",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-05T00:55:51.097896",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-05T01:02:08.305878",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": null,
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            }
-        ]
-    },
-    {
-        "timestamp": "2026-07-05T20:15:10.009947",
-        "students": [
-            {
-                "name": "Test User",
-                "github": "testgit",
-                "leetcode": "testleet",
-                "kaggle": "testkag",
-                "metrics": {
-                    "github": {
-                        "repos": 1,
-                        "followers": 7
-                    },
-                    "leetcode": {
-                        "totalSolved": 91,
-                        "easy": 19,
-                        "medium": 53,
-                        "hard": 19
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
-                    }
-                }
-            },
-            {
-                "name": "HARISHANKAR M",
-                "github": "Harishankar00",
-                "leetcode": "Harishankar_M",
-                "kaggle": "harishankar00",
-                "metrics": {
-                    "github": {
-                        "repos": 39,
-                        "followers": 2
-                    },
-                    "leetcode": {
-                        "totalSolved": 8,
-                        "easy": 8,
-                        "medium": 0,
-                        "hard": 0
-                    },
-                    "kaggle": {
-                        "competitions": 2,
-                        "datasets": 1,
-                        "notebooks": 5
+                        "competitions": 0,
+                        "datasets": 7,
+                        "notebooks": 20,
+                        "status": "Linked"
                     }
                 }
             }

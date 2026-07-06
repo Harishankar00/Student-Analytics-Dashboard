@@ -34,39 +34,227 @@ def save_snapshots(data):
     with open(SNAPSHOTS_FILE, 'w') as f:
         json.dump(data, f, indent=4)
 
+import os
+
+# Quick .env loader since python-dotenv might not be installed
+if os.path.exists('.env'):
+    with open('.env') as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                k, v = line.strip().split('=', 1)
+                os.environ[k] = v.strip('"\'')
+
 def fetch_github(username):
-    url = f"https://api.github.com/users/{username}"
+    if not username:
+        return None
+    github_token = os.environ.get("GITHUB_TOKEN")
+    
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Student-Analytics-Dashboard'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return json.loads(response.read().decode())
+        if github_token:
+            # Use powerful GraphQL API
+            url = "https://api.github.com/graphql"
+            query = """
+            query getUserProfile($username: String!) {
+              user(login: $username) {
+                followers { totalCount }
+                repositories(first: 60, ownerAffiliations: OWNER, isFork: false, orderBy: {field: STARGAZERS, direction: DESC}) {
+                  totalCount
+                  nodes {
+                    name
+                    description
+                    url
+                    stargazerCount
+                    primaryLanguage {
+                      name
+                      color
+                    }
+                  }
+                }
+                contributionsCollection {
+                  contributionCalendar {
+                    totalContributions
+                    weeks {
+                      contributionDays {
+                        contributionCount
+                        date
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """
+            payload = json.dumps({"query": query, "variables": {"username": username}}).encode('utf-8')
+            req = urllib.request.Request(url, data=payload, headers={
+                'User-Agent': 'Mozilla/5.0',
+                'Authorization': f'bearer {github_token}',
+                'Content-Type': 'application/json'
+            })
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+                
+                if "errors" in data or not data.get("data", {}).get("user"):
+                    return None
+                    
+                user_data = data["data"]["user"]
+                
+                # Calculate streaks and commits
+                calendar = user_data["contributionsCollection"]["contributionCalendar"]
+                total_commits = calendar["totalContributions"]
+                days = []
+                for week in calendar["weeks"]:
+                    for day in week["contributionDays"]:
+                        days.append(day["contributionCount"])
+                        
+                current_streak = 0
+                longest_streak = 0
+                for count in days:
+                    if count > 0:
+                        current_streak += 1
+                        longest_streak = max(longest_streak, current_streak)
+                    else:
+                        current_streak = 0
+                
+                # Calculate languages & top projects
+                repos = user_data["repositories"]["nodes"]
+                lang_counts = {}
+                top_projects = []
+                for r in repos:
+                    if len(top_projects) < 4:
+                        top_projects.append({
+                            "name": r["name"],
+                            "description": r.get("description") or "",
+                            "url": r["url"],
+                            "stars": r["stargazerCount"],
+                            "language": r["primaryLanguage"]["name"] if r.get("primaryLanguage") else "Unknown",
+                            "color": r["primaryLanguage"]["color"] if r.get("primaryLanguage") else "#ccc"
+                        })
+                        
+                    if r.get("primaryLanguage"):
+                        lang = r["primaryLanguage"]["name"]
+                        lang_counts[lang] = lang_counts.get(lang, 0) + 1
+                        
+                languages = [{"name": k, "count": v} for k, v in sorted(lang_counts.items(), key=lambda x: x[1], reverse=True)]
+                
+                return {
+                    "followers": user_data["followers"]["totalCount"],
+                    "repos": user_data["repositories"]["totalCount"],
+                    "totalCommits": total_commits,
+                    "currentStreak": current_streak,
+                    "longestStreak": longest_streak,
+                    "languages": languages,
+                    "topProjects": top_projects
+                }
+        else:
+            # Fallback to REST API
+            req = urllib.request.Request(f"https://api.github.com/users/{username}", headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=5) as response:
+                data = json.loads(response.read().decode())
+                return {
+                    "followers": data.get("followers", 0),
+                    "repos": data.get("public_repos", 0),
+                    "totalCommits": 0,
+                    "currentStreak": 0,
+                    "longestStreak": 0,
+                    "languages": [],
+                    "topProjects": []
+                }
     except Exception as e:
         print(f"Error fetching GitHub for {username}: {e}")
-        return {
-            "login": username,
-            "avatar_url": f"https://github.com/{username}.png",
-            "html_url": f"https://github.com/{username}",
-            "public_repos": 15,
-            "followers": 120
-        }
+        return None
 
 def fetch_leetcode(username):
-    url = f"https://leetcode-api-faisalshohag.vercel.app/{username}"
+    if not username:
+        return None
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Student-Analytics-Dashboard'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            return json.loads(response.read().decode())
+        # Direct GraphQL query to LeetCode (avoids third-party proxy limits)
+        url = "https://leetcode.com/graphql"
+        query = """
+        query getUserProfile($username: String!) {
+          matchedUser(username: $username) {
+            submitStats: submitStatsGlobal {
+              acSubmissionNum {
+                difficulty
+                count
+              }
+            }
+          }
+        }
+        """
+        payload = json.dumps({
+            "query": query,
+            "variables": {"username": username}
+        }).encode('utf-8')
+        
+        req = urllib.request.Request(url, data=payload, headers={
+            'User-Agent': 'Mozilla/5.0',
+            'Content-Type': 'application/json'
+        })
+        
+        with urllib.request.urlopen(req, timeout=5) as response:
+            data = json.loads(response.read().decode())
+            if not data.get("data") or not data["data"].get("matchedUser"):
+                return None
+                
+            stats = data["data"]["matchedUser"]["submitStats"]["acSubmissionNum"]
+            result = {"totalSolved": 0, "easySolved": 0, "mediumSolved": 0, "hardSolved": 0}
+            
+            for stat in stats:
+                if stat["difficulty"] == "All":
+                    result["totalSolved"] = stat["count"]
+                elif stat["difficulty"] == "Easy":
+                    result["easySolved"] = stat["count"]
+                elif stat["difficulty"] == "Medium":
+                    result["mediumSolved"] = stat["count"]
+                elif stat["difficulty"] == "Hard":
+                    result["hardSolved"] = stat["count"]
+                    
+            return result
     except Exception as e:
         print(f"Error fetching LeetCode for {username}: {e}")
         return None
 
-def fetch_kaggle(username):
-    return {
-        "username": username,
-        "competitions": 2,
-        "datasets": 1,
-        "notebooks": 5
-    }
+import base64
+
+def fetch_kaggle(username, key=None):
+    if not username or not key:
+        return {"username": username, "status": "Not Linked", "datasets": 0, "competitions": 0, "notebooks": 0}
+        
+    try:
+        # Verify auth by fetching user's datasets via official API
+        url = f"https://www.kaggle.com/api/v1/datasets/list?user={username}"
+        req = urllib.request.Request(url)
+        
+        auth_str = f"{username}:{key}"
+        base64_str = base64.b64encode(auth_str.encode('ascii')).decode('ascii')
+        req.add_header("Authorization", f"Basic {base64_str}")
+        
+        with urllib.request.urlopen(req, timeout=10) as response:
+            datasets = json.loads(response.read().decode())
+            dataset_count = len(datasets)
+            
+        # Fetch notebooks/kernels
+        notebook_count = 0
+        try:
+            url_kernels = f"https://www.kaggle.com/api/v1/kernels/list?user={username}"
+            req_kernels = urllib.request.Request(url_kernels)
+            req_kernels.add_header("Authorization", f"Basic {base64_str}")
+            with urllib.request.urlopen(req_kernels, timeout=10) as response:
+                kernels = json.loads(response.read().decode())
+                notebook_count = len(kernels)
+        except Exception as kernel_e:
+            print(f"Warning fetching Kaggle kernels for {username}: {kernel_e}")
+            
+        return {
+            "username": username,
+            "datasets": dataset_count,
+            "competitions": 0, # Placeholder as official API lacks profile stats
+            "notebooks": notebook_count,
+            "status": "Linked"
+        }
+    except Exception as e:
+        print(f"Error fetching Kaggle for {username}: {e}")
+        return {"username": username, "status": "Error", "datasets": 0, "competitions": 0, "notebooks": 0}
 
 def take_system_snapshot():
     print(f"[{datetime.datetime.now().isoformat()}] Running automated snapshot...")
@@ -87,10 +275,7 @@ def take_system_snapshot():
         
         git_data = fetch_github(student.get("github"))
         if git_data:
-            student_snap["metrics"]["github"] = {
-                "repos": git_data.get("public_repos", 0),
-                "followers": git_data.get("followers", 0)
-            }
+            student_snap["metrics"]["github"] = git_data
         else:
             student_snap["metrics"]["github"] = None
             
@@ -105,11 +290,12 @@ def take_system_snapshot():
         else:
             student_snap["metrics"]["leetcode"] = None
             
-        kag_data = fetch_kaggle(student.get("kaggle"))
+        kag_data = fetch_kaggle(student.get("kaggle"), student.get("kaggle_key"))
         student_snap["metrics"]["kaggle"] = {
             "competitions": kag_data.get("competitions", 0),
             "datasets": kag_data.get("datasets", 0),
-            "notebooks": kag_data.get("notebooks", 0)
+            "notebooks": kag_data.get("notebooks", 0),
+            "status": kag_data.get("status", "Unknown")
         }
         
         current_snapshot_students.append(student_snap)
@@ -134,7 +320,7 @@ def automated_snapshot_worker():
     time.sleep(5)
     while True:
         take_system_snapshot()
-        time.sleep(60)
+        time.sleep(900)  # Sleep for 15 minutes to avoid rate limits
 
 @app.route('/api/health', methods=['GET'])
 def health():
@@ -143,6 +329,48 @@ def health():
 @app.route('/api/students', methods=['GET'])
 def get_students():
     return jsonify(load_data())
+
+@app.route('/api/student/<email>/history', methods=['GET'])
+def get_student_history(email):
+    snapshots = load_snapshots()
+    history_data = []
+    
+    for snap in snapshots:
+        for s in snap.get("students", []):
+            if s.get("name") == email:
+                history_data.append({
+                    "timestamp": snap.get("timestamp"),
+                    "metrics": s.get("metrics", {})
+                })
+                break
+                
+    return jsonify(history_data)
+
+@app.route('/api/student/<email>', methods=['GET'])
+def get_student(email):
+    students = load_data()
+    student = next((s for s in students if s.get("name") == email), None)
+    if not student:
+        return jsonify({"error": "Student not found"}), 404
+        
+    snapshots = load_snapshots()
+    latest_metrics = {}
+    if snapshots:
+        last_snap = snapshots[-1]
+        for s in last_snap.get("students", []):
+            if s.get("name") == email:
+                latest_metrics = s.get("metrics", {})
+                break
+                
+    return jsonify({
+        "student": {
+            "name": student.get("name"),
+            "github": student.get("github"),
+            "leetcode": student.get("leetcode"),
+            "kaggle": student.get("kaggle")
+        },
+        "metrics": latest_metrics
+    }), 200
 
 @app.route('/api/github', methods=['GET'])
 def get_github():
@@ -167,9 +395,34 @@ def get_leetcode():
 @app.route('/api/kaggle', methods=['GET'])
 def get_kaggle():
     username = request.args.get('username')
+    key = request.args.get('key')
     if not username:
         return jsonify({"error": "Missing username"}), 400
-    return jsonify(fetch_kaggle(username))
+    return jsonify(fetch_kaggle(username, key))
+
+@app.route('/api/kaggle-upload', methods=['POST', 'OPTIONS'])
+def upload_kaggle():
+    if request.method == 'OPTIONS':
+        # Handle CORS preflight for the upload endpoint
+        return '', 204
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+        
+    try:
+        content = file.read().decode('utf-8')
+        data = json.loads(content)
+        username = data.get('username')
+        key = data.get('key')
+        
+        if username and key:
+            return jsonify({"username": username, "key": key}), 200
+        else:
+            return jsonify({"error": "Invalid kaggle.json format"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
 
 @app.route('/api/analytics', methods=['GET'])
 def get_analytics():
@@ -240,9 +493,7 @@ def get_analytics():
     else:
         advice = "Keep learning and coding! Every line of code counts towards your progress."
         
-    kag_data = fetch_kaggle(github_user) 
-    if kag_data and kag_data.get("competitions", 0) > 0:
-        advice += " Your participation in Kaggle also shows great initiative in Data Science."
+    # Kaggle integration requires key, skipping in simple analytics for now
 
     return jsonify({
         "focus": focus,
@@ -250,19 +501,31 @@ def get_analytics():
         "advice": advice
     })
 
-@app.route('/api/register', methods=['POST'])
+@app.route('/api/register', methods=['POST', 'OPTIONS'])
 def register():
+    if request.method == 'OPTIONS':
+        return '', 204
     student_data = request.json
-    if not student_data:
-        return jsonify({"error": "No data provided"}), 400
+    if not student_data or not student_data.get("name"):
+        return jsonify({"error": "No valid data provided"}), 400
         
     students = load_data()
-    students.append(student_data)
+    # Update existing student if email matches, else append
+    updated = False
+    for i, s in enumerate(students):
+        if s.get("name") == student_data.get("name"):
+            students[i] = student_data
+            updated = True
+            break
+            
+    if not updated:
+        students.append(student_data)
+        
     save_data(students)
     
     threading.Thread(target=take_system_snapshot, daemon=True).start()
     
-    return jsonify({"status": "success", "message": "Student registered successfully!"}), 201
+    return jsonify({"status": "success", "message": "Student registered/updated successfully!"}), 201
 
 if __name__ == '__main__':
     worker = threading.Thread(target=automated_snapshot_worker, daemon=True)
