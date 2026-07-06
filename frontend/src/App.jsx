@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { auth } from './firebase';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, CartesianGrid, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import './App.css';
 
 const PIE_COLORS = ['#312e81', '#3730a3', '#4338ca', '#4f46e5', '#6366f1', '#818cf8'];
@@ -45,6 +45,66 @@ function App() {
   const [kaggleUser, setKaggleUser] = useState('');
   const [kaggleKey, setKaggleKey] = useState('');
   const [setupStatus, setSetupStatus] = useState('');
+  
+  // Goal Tracking states
+  const [goals, setGoals] = useState([]);
+  const [goalTitle, setGoalTitle] = useState('');
+  const [goalCategory, setGoalCategory] = useState('leetcode_total');
+  const [goalTarget, setGoalTarget] = useState('');
+  const [goalStatusMsg, setGoalStatusMsg] = useState('');
+
+  const fetchGoals = async (userEmail) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/student/${userEmail}/goals`);
+      if (res.ok) {
+        const data = await res.json();
+        setGoals(data);
+      }
+    } catch (err) {
+      console.error("Error fetching goals:", err);
+    }
+  };
+
+  const handleAddGoal = async (e) => {
+    e.preventDefault();
+    if (!goalTitle || !goalTarget) return;
+    setGoalStatusMsg('Adding goal...');
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/student/${user.email}/goals`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: goalTitle,
+          category: goalCategory,
+          target: parseInt(goalTarget)
+        })
+      });
+      if (res.ok) {
+        setGoalStatusMsg('✅ Goal added!');
+        setGoalTitle('');
+        setGoalTarget('');
+        fetchGoals(user.email);
+        setTimeout(() => setGoalStatusMsg(''), 2000);
+      } else {
+        setGoalStatusMsg('❌ Failed to add goal.');
+      }
+    } catch (err) {
+      setGoalStatusMsg('❌ Request failed.');
+    }
+  };
+
+  const handleDeleteGoal = async (goalId) => {
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/student/${user.email}/goals/${goalId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchGoals(user.email);
+      }
+    } catch (err) {
+      console.error("Error deleting goal:", err);
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -67,6 +127,7 @@ function App() {
         const data = await res.json();
         setDashboardData(data);
         setHasSetup(true);
+        fetchGoals(userEmail);
         // Fetch historical snapshots for Phase 4
         const histRes = await fetch(`http://127.0.0.1:5000/api/student/${userEmail}/history`);
         if (histRes.ok) {
@@ -285,7 +346,7 @@ function App() {
   }
 
   // --- RENDER DASHBOARD SCREEN ---
-  const { student, metrics } = dashboardData || {};
+  const { student, metrics, evaluation } = dashboardData || {};
 
   return (
     <div style={{ minHeight: '100vh', background: '#f3f4f6', fontFamily: 'Inter, sans-serif', padding: '2rem' }}>
@@ -514,6 +575,121 @@ function App() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Goals & Evaluation Row */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+          
+          {/* Goal Tracker Card */}
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #10b981' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Goal Tracker</h3>
+            
+            {/* Create Goal Form */}
+            <form onSubmit={handleAddGoal} style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <input 
+                type="text" 
+                placeholder="Target goal description" 
+                value={goalTitle}
+                onChange={(e) => setGoalTitle(e.target.value)}
+                required
+                style={{ flex: 2, padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem' }}
+              />
+              <select 
+                value={goalCategory} 
+                onChange={(e) => setGoalCategory(e.target.value)}
+                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', background: 'white' }}
+              >
+                <option value="leetcode_total">LeetCode Solved</option>
+                <option value="leetcode_easy">LeetCode Easy</option>
+                <option value="leetcode_medium">LeetCode Med</option>
+                <option value="leetcode_hard">LeetCode Hard</option>
+                <option value="github_commits">GitHub Commits</option>
+                <option value="github_repos">GitHub Repos</option>
+                <option value="kaggle_datasets">Kaggle Datasets</option>
+                <option value="kaggle_notebooks">Kaggle Notebooks</option>
+              </select>
+              <input 
+                type="number" 
+                placeholder="Target" 
+                value={goalTarget}
+                onChange={(e) => setGoalTarget(e.target.value)}
+                required
+                min="1"
+                style={{ width: '80px', padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem' }}
+              />
+              <button type="submit" style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.875rem' }}>
+                Add
+              </button>
+            </form>
+            {goalStatusMsg && <p style={{ fontSize: '0.85rem', marginTop: '-1rem', marginBottom: '1rem', color: '#374151' }}>{goalStatusMsg}</p>}
+            
+            {/* Goals List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '280px', overflowY: 'auto' }}>
+              {goals.length === 0 ? (
+                <p style={{ color: '#9ca3af', fontStyle: 'italic', fontSize: '0.9rem', margin: 0 }}>No active goals. Set a goal above to get started!</p>
+              ) : (
+                goals.map((g) => {
+                  const percent = Math.min(100, Math.round((g.current / g.target) * 100)) || 0;
+                  const isDone = g.status === 'Completed';
+                  return (
+                    <div key={g.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.75rem', background: '#f9fafb', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: '600', color: '#111827' }}>{g.title}</span>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          <span style={{ 
+                            fontSize: '0.75rem', 
+                            padding: '0.25rem 0.5rem', 
+                            borderRadius: '4px', 
+                            fontWeight: 'bold', 
+                            color: isDone ? '#065f46' : '#1e3a8a', 
+                            background: isDone ? '#d1fae5' : '#dbeafe' 
+                          }}>
+                            {g.status}
+                          </span>
+                          <button onClick={() => handleDeleteGoal(g.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '0.875rem', padding: '0.25rem' }} title="Delete goal">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.25rem' }}>
+                        <div style={{ flex: 1, height: '8px', background: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
+                          <div style={{ width: `${percent}%`, height: '100%', background: isDone ? '#10b981' : '#3b82f6', borderRadius: '999px', transition: 'width 0.3s ease' }}></div>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: '#4b5563', fontWeight: '500', minWidth: '65px', textAlign: 'right' }}>
+                          {g.current}/{g.target} ({percent}%)
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          
+          {/* Multi-Dimensional Skill Matrix Card */}
+          {evaluation && (
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #8b5cf6' }}>
+              <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Multi-Dimensional Skill Matrix</h3>
+              <div style={{ height: 300, width: '100%', display: 'flex', justifyContent: 'center' }}>
+                <ResponsiveContainer>
+                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={[
+                    { subject: 'Problem Solving', A: evaluation.problem_solving, fullMark: 100 },
+                    { subject: 'Development', A: evaluation.development, fullMark: 100 },
+                    { subject: 'Data Science', A: evaluation.data_science, fullMark: 100 },
+                    { subject: 'Consistency', A: evaluation.consistency, fullMark: 100 }
+                  ]}>
+                    <PolarGrid stroke="#e5e7eb" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 12 }} />
+                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#9ca3af' }} />
+                    <Radar name="Skills" dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.4} />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+          
         </div>
         
         {/* Background Sync Notice */}

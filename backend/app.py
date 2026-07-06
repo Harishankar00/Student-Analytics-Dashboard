@@ -11,28 +11,36 @@ import time
 app = Flask(__name__)
 CORS(app)
 
-DATA_FILE = 'students.json'
-SNAPSHOTS_FILE = 'snapshots.json'
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# Initialize Firebase Admin SDK
+cred = credentials.Certificate("firebase-service-account.json")
+firebase_admin.initialize_app(cred)
+db = firestore.client()
 
 def load_data():
-    if not os.path.exists(DATA_FILE):
+    try:
+        docs = db.collection('students').stream()
+        students = []
+        for doc in docs:
+            data = doc.to_dict()
+            data['name'] = doc.id
+            students.append(data)
+        return students
+    except Exception as e:
+        print(f"Error loading students from Firestore: {e}")
         return []
-    with open(DATA_FILE, 'r') as f:
-        return json.load(f)
 
 def save_data(data):
-    with open(DATA_FILE, 'w') as f:
-        json.dump(data, f, indent=4)
-
-def load_snapshots():
-    if not os.path.exists(SNAPSHOTS_FILE):
-        return []
-    with open(SNAPSHOTS_FILE, 'r') as f:
-        return json.load(f)
-
-def save_snapshots(data):
-    with open(SNAPSHOTS_FILE, 'w') as f:
-        json.dump(data, f, indent=4)
+    try:
+        for student in data:
+            email = student.get("name")
+            if email:
+                doc_data = {k: v for k, v in student.items() if k != "name"}
+                db.collection('students').document(email).set(doc_data)
+    except Exception as e:
+        print(f"Error saving students to Firestore: {e}")
 
 import os
 
@@ -284,58 +292,56 @@ def take_system_snapshot():
         print("No students registered. Skipping snapshot.")
         return
 
-    current_snapshot_students = []
     for student in students:
-        student_snap = {
-            "name": student.get("name"),
-            "github": student.get("github"),
-            "leetcode": student.get("leetcode"),
-            "kaggle": student.get("kaggle"),
-            "metrics": {}
-        }
-        
-        git_data = fetch_github(student.get("github"))
-        if git_data:
-            student_snap["metrics"]["github"] = git_data
-        else:
-            student_snap["metrics"]["github"] = None
+        email = student.get("name")
+        if not email:
+            continue
             
+        git_data = fetch_github(student.get("github"))
         leet_data = fetch_leetcode(student.get("leetcode"))
+        kag_data = fetch_kaggle(student.get("kaggle"), student.get("kaggle_key"))
+        
+        github_metrics = git_data if git_data else None
+        
+        leetcode_metrics = None
         if leet_data and "totalSolved" in leet_data:
-            student_snap["metrics"]["leetcode"] = {
+            leetcode_metrics = {
                 "totalSolved": leet_data.get("totalSolved", 0),
                 "easy": leet_data.get("easySolved", 0),
                 "medium": leet_data.get("mediumSolved", 0),
                 "hard": leet_data.get("hardSolved", 0)
             }
-        else:
-            student_snap["metrics"]["leetcode"] = None
             
-        kag_data = fetch_kaggle(student.get("kaggle"), student.get("kaggle_key"))
-        student_snap["metrics"]["kaggle"] = {
+        kaggle_metrics = {
             "competitions": kag_data.get("competitions", 0),
             "datasets": kag_data.get("datasets", 0),
             "notebooks": kag_data.get("notebooks", 0),
             "status": kag_data.get("status", "Unknown")
         }
         
-        current_snapshot_students.append(student_snap)
-
-    snapshots = load_snapshots()
-    
-    if snapshots:
-        last_snapshot_students = snapshots[-1].get("students", [])
-        if current_snapshot_students == last_snapshot_students:
-            print("No changes since last snapshot. Discarding duplicate.")
-            return
-
-    print("Changes detected! Saving new snapshot.")
-    snapshot_entry = {
-        'timestamp': datetime.datetime.now().isoformat(),
-        'students': current_snapshot_students
-    }
-    snapshots.append(snapshot_entry)
-    save_snapshots(snapshots)
+        current_metrics = {
+            "github": github_metrics,
+            "leetcode": leetcode_metrics,
+            "kaggle": kaggle_metrics
+        }
+        
+        try:
+            snapshots_ref = db.collection('students').document(email).collection('snapshots')
+            latest_snap_query = snapshots_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).get()
+            
+            if latest_snap_query:
+                latest_snap = latest_snap_query[0].to_dict()
+                if latest_snap.get("metrics") == current_metrics:
+                    print(f"No changes for {email} since last snapshot. Discarding duplicate.")
+                    continue
+                    
+            print(f"Changes detected for {email}! Saving new snapshot.")
+            snapshots_ref.add({
+                'timestamp': datetime.datetime.now().isoformat(),
+                'metrics': current_metrics
+            })
+        except Exception as snap_err:
+            print(f"Error saving snapshot for {email}: {snap_err}")
 
 def automated_snapshot_worker():
     time.sleep(5)
@@ -391,24 +397,55 @@ def get_student(email):
     if not student:
         return jsonify({"error": "Student not found"}), 404
         
-    snapshots = load_snapshots()
-    latest_metrics = {}
-    if snapshots:
-        last_snap = snapshots[-1]
-        for s in last_snap.get("students", []):
-            if s.get("name") == email:
-                latest_metrics = s.get("metrics", {})
-                break
-                
-    return jsonify({
-        "student": {
-            "name": student.get("name"),
-            "github": student.get("github"),
-            "leetcode": student.get("leetcode"),
-            "kaggle": student.get("kaggle")
-        },
-        "metrics": latest_metrics
-    }), 200
+    try:
+        snapshots_ref = db.collection('students').document(email).collection('snapshots')
+        latest_snap_query = snapshots_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).get()
+        
+        latest_metrics = {}
+        if latest_snap_query:
+            latest_metrics = latest_snap_query[0].to_dict().get("metrics", {})
+            
+        # Calculate dynamic evaluation scores (0 to 100)
+        leetcode_metrics = latest_metrics.get("leetcode", {}) or {}
+        easy_count = leetcode_metrics.get("easy", 0) if leetcode_metrics else 0
+        med_count = leetcode_metrics.get("medium", 0) if leetcode_metrics else 0
+        hard_count = leetcode_metrics.get("hard", 0) if leetcode_metrics else 0
+        problem_solving_score = min(100, (easy_count * 5 + med_count * 15 + hard_count * 30))
+        
+        github_metrics = latest_metrics.get("github", {}) or {}
+        repos_count = github_metrics.get("repos", 0) if github_metrics else 0
+        commits_count = github_metrics.get("totalCommits", 0) if github_metrics else 0
+        dev_activity_score = min(100, (repos_count * 2 + commits_count // 3))
+        
+        kaggle_metrics = latest_metrics.get("kaggle", {}) or {}
+        datasets_count = kaggle_metrics.get("datasets", 0) if kaggle_metrics else 0
+        notebooks_count = kaggle_metrics.get("notebooks", 0) if kaggle_metrics else 0
+        data_science_score = min(100, (datasets_count * 10 + notebooks_count * 4))
+        
+        current_streak = github_metrics.get("currentStreak", 0) if github_metrics else 0
+        longest_streak = github_metrics.get("longestStreak", 0) if github_metrics else 0
+        consistency_score = min(100, (current_streak * 10 + longest_streak * 2))
+        
+        evaluation = {
+            "problem_solving": problem_solving_score,
+            "development": dev_activity_score,
+            "data_science": data_science_score,
+            "consistency": consistency_score
+        }
+        
+        return jsonify({
+            "student": {
+                "name": student.get("name"),
+                "github": student.get("github"),
+                "leetcode": student.get("leetcode"),
+                "kaggle": student.get("kaggle")
+            },
+            "metrics": latest_metrics,
+            "evaluation": evaluation
+        }), 200
+    except Exception as err:
+        print(f"Error loading student details: {err}")
+        return jsonify({"error": str(err)}), 500
 
 @app.route('/api/github', methods=['GET'])
 def get_github():
@@ -473,7 +510,7 @@ def get_analytics():
     git_data = fetch_github(github_user)
     leet_data = fetch_leetcode(leetcode_user)
     
-    repos = git_data.get("public_repos", 0) if git_data else 0
+    repos = git_data.get("repos", 0) if git_data else 0
     solved = leet_data.get("totalSolved", 0) if leet_data else 0
     
     focus = "Balanced"
@@ -487,37 +524,36 @@ def get_analytics():
         elif dsa_ratio < 0.3:
             focus = "Project Focused"
             
-    snapshots = load_snapshots()
-    consistency = "Unknown"
+    # Find student email by github user
+    students = load_data()
+    student = next((s for s in students if s.get("github") == github_user), None)
     
-    if len(snapshots) >= 2:
-        oldest = snapshots[0]
-        newest = snapshots[-1]
-        
-        old_solved, new_solved = 0, 0
-        old_repos, new_repos = 0, 0
-        
-        for s in oldest.get("students", []):
-            if s.get("github") == github_user:
-                if s.get("metrics", {}).get("leetcode"):
-                    old_solved = s["metrics"]["leetcode"].get("totalSolved", 0)
-                if s.get("metrics", {}).get("github"):
-                    old_repos = s["metrics"]["github"].get("repos", 0)
-                    
-        for s in newest.get("students", []):
-            if s.get("github") == github_user:
-                if s.get("metrics", {}).get("leetcode"):
-                    new_solved = s["metrics"]["leetcode"].get("totalSolved", 0)
-                if s.get("metrics", {}).get("github"):
-                    new_repos = s["metrics"]["github"].get("repos", 0)
-                    
-        solved_diff = new_solved - old_solved
-        repos_diff = new_repos - old_repos
-        
-        if solved_diff > 0 or repos_diff > 0:
-            consistency = "Active"
-        else:
-            consistency = "Inactive"
+    consistency = "Unknown"
+    if student:
+        email = student.get("name")
+        try:
+            snapshots_ref = db.collection('students').document(email).collection('snapshots')
+            snaps_query = snapshots_ref.order_by('timestamp').get()
+            
+            if len(snaps_query) >= 2:
+                oldest = snaps_query[0].to_dict()
+                newest = snaps_query[-1].to_dict()
+                
+                old_solved = oldest.get("metrics", {}).get("leetcode", {}).get("totalSolved", 0) if oldest.get("metrics", {}).get("leetcode") else 0
+                old_repos = oldest.get("metrics", {}).get("github", {}).get("repos", 0) if oldest.get("metrics", {}).get("github") else 0
+                
+                new_solved = newest.get("metrics", {}).get("leetcode", {}).get("totalSolved", 0) if newest.get("metrics", {}).get("leetcode") else 0
+                new_repos = newest.get("metrics", {}).get("github", {}).get("repos", 0) if newest.get("metrics", {}).get("github") else 0
+                
+                solved_diff = new_solved - old_solved
+                repos_diff = new_repos - old_repos
+                
+                if solved_diff > 0 or repos_diff > 0:
+                    consistency = "Active"
+                else:
+                    consistency = "Inactive"
+        except Exception as snap_err:
+            print(f"Error fetching snapshots for consistency: {snap_err}")
             
     advice = ""
     if consistency == "Inactive" or consistency == "Unknown":
@@ -564,6 +600,95 @@ def register():
     threading.Thread(target=take_system_snapshot, daemon=True).start()
     
     return jsonify({"status": "success", "message": "Student registered/updated successfully!"}), 201
+
+@app.route('/api/student/<email>/goals', methods=['GET', 'POST', 'OPTIONS'])
+def manage_goals(email):
+    if request.method == 'OPTIONS':
+        return '', 204
+        
+    goals_ref = db.collection('students').document(email).collection('goals')
+    
+    if request.method == 'POST':
+        goal_data = request.json
+        if not goal_data or not goal_data.get("title") or not goal_data.get("category") or not goal_data.get("target"):
+            return jsonify({"error": "Missing goal data"}), 400
+            
+        new_goal = {
+            "title": goal_data["title"],
+            "category": goal_data["category"],
+            "target": int(goal_data["target"]),
+            "current": 0,
+            "status": "In Progress",
+            "createdAt": datetime.date.today().strftime('%Y-%m-%d')
+        }
+        
+        doc_ref = goals_ref.add(new_goal)
+        new_goal["id"] = doc_ref[1].id
+        return jsonify(new_goal), 201
+        
+    # GET method
+    try:
+        snapshots_ref = db.collection('students').document(email).collection('snapshots')
+        latest_snap_query = snapshots_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).get()
+        latest_metrics = {}
+        if latest_snap_query:
+            latest_metrics = latest_snap_query[0].to_dict().get("metrics", {})
+            
+        goals_query = goals_ref.get()
+        goals_list = []
+        
+        for doc in goals_query:
+            goal = doc.to_dict()
+            goal["id"] = doc.id
+            
+            category = goal.get("category")
+            target = goal.get("target", 0)
+            current = 0
+            
+            if category == 'leetcode_total':
+                current = latest_metrics.get("leetcode", {}).get("totalSolved", 0) if latest_metrics.get("leetcode") else 0
+            elif category == 'leetcode_easy':
+                current = latest_metrics.get("leetcode", {}).get("easy", 0) if latest_metrics.get("leetcode") else 0
+            elif category == 'leetcode_medium':
+                current = latest_metrics.get("leetcode", {}).get("medium", 0) if latest_metrics.get("leetcode") else 0
+            elif category == 'leetcode_hard':
+                current = latest_metrics.get("leetcode", {}).get("hard", 0) if latest_metrics.get("leetcode") else 0
+            elif category == 'github_commits':
+                current = latest_metrics.get("github", {}).get("totalCommits", 0) if latest_metrics.get("github") else 0
+            elif category == 'github_repos':
+                current = latest_metrics.get("github", {}).get("repos", 0) if latest_metrics.get("github") else 0
+            elif category == 'kaggle_datasets':
+                current = latest_metrics.get("kaggle", {}).get("datasets", 0) if latest_metrics.get("kaggle") else 0
+            elif category == 'kaggle_notebooks':
+                current = latest_metrics.get("kaggle", {}).get("notebooks", 0) if latest_metrics.get("kaggle") else 0
+                
+            goal["current"] = current
+            if current >= target:
+                goal["status"] = "Completed"
+            else:
+                goal["status"] = "In Progress"
+                
+            goals_ref.document(doc.id).update({
+                "current": current,
+                "status": goal["status"]
+            })
+            
+            goals_list.append(goal)
+            
+        return jsonify(goals_list), 200
+    except Exception as err:
+        print(f"Error managing goals: {err}")
+        return jsonify({"error": str(err)}), 500
+
+@app.route('/api/student/<email>/goals/<goal_id>', methods=['DELETE', 'OPTIONS'])
+def delete_goal(email, goal_id):
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        db.collection('students').document(email).collection('goals').document(goal_id).delete()
+        return jsonify({"status": "success", "message": "Goal deleted successfully"}), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
 
 if __name__ == '__main__':
     worker = threading.Thread(target=automated_snapshot_worker, daemon=True)
