@@ -298,12 +298,13 @@ def fetch_kaggle(username, key=None):
         return {"username": username, "status": "Not Linked", "datasets": 0, "competitions": 0, "notebooks": 0, "badge": "Novice", "medals": {"bronze": 0, "silver": 0, "gold": 0}}
         
     try:
-        url = "https://www.kaggle.com/api/v1/datasets/list?mine=true"
+        url = "https://www.kaggle.com/api/v1/datasets/list?group=my"
         req = urllib.request.Request(url)
         
         auth_str = f"{username}:{key}"
         base64_str = base64.b64encode(auth_str.encode('ascii')).decode('ascii')
         req.add_header("Authorization", f"Basic {base64_str}")
+        req.add_header("User-Agent", "Mozilla/5.0")
         
         with urllib.request.urlopen(req, timeout=10) as response:
             datasets = json.loads(response.read().decode())
@@ -312,9 +313,10 @@ def fetch_kaggle(username, key=None):
         notebook_count = 0
         kernels = []
         try:
-            url_kernels = "https://www.kaggle.com/api/v1/kernels/list?mine=true"
+            url_kernels = "https://www.kaggle.com/api/v1/kernels/list?group=profile"
             req_kernels = urllib.request.Request(url_kernels)
             req_kernels.add_header("Authorization", f"Basic {base64_str}")
+            req_kernels.add_header("User-Agent", "Mozilla/5.0")
             with urllib.request.urlopen(req_kernels, timeout=10) as response:
                 kernels = json.loads(response.read().decode())
                 notebook_count = len(kernels)

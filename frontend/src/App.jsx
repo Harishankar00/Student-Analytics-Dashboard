@@ -93,6 +93,314 @@ function App() {
   // Sync state
   const [syncing, setSyncing] = useState(false);
 
+  const downloadStudentPDF = () => {
+    if (!dashboardData) return;
+    const { student, metrics, evaluation } = dashboardData;
+    const leet = metrics?.leetcode || {};
+    const git = metrics?.github || {};
+    const kag = metrics?.kaggle || {};
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Student Analytics Report - ${student.name}</title>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.5; padding: 2rem; margin: 0; }
+            .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
+            .header h1 { margin: 0; font-size: 1.75rem; color: #111827; }
+            .header p { margin: 0.25rem 0 0 0; color: #4b5563; font-size: 0.9rem; }
+            .metadata { margin-bottom: 2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: #f9fafb; padding: 1.25rem; border-radius: 8px; border: 1px solid #e5e7eb; font-size: 0.9rem; }
+            .section { margin-bottom: 2.5rem; }
+            .section-title { font-size: 1.2rem; font-weight: bold; color: #1e1b4b; border-left: 4px solid #4f46e5; padding-left: 0.75rem; margin: 0 0 1rem 0; text-transform: uppercase; letter-spacing: 0.05em; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.9rem; }
+            th, td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; }
+            th { background: #f3f4f6; font-weight: bold; color: #374151; }
+            .progress-bar-container { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+            .progress-bar-label { min-width: 180px; font-weight: 600; font-size: 0.9rem; }
+            .progress-bar { flex: 1; height: 10px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
+            .progress-fill { height: 100%; background: #4f46e5; border-radius: 999px; }
+            .progress-value { font-weight: bold; min-width: 40px; text-align: right; }
+            .recommendations-card { background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 1.5rem; margin-top: 1rem; }
+            .recommendations-card p { font-style: italic; margin: 0 0 1rem 0; font-size: 0.95rem; }
+            .recommendations-card ul { margin: 0; padding-left: 1.25rem; }
+            .recommendations-card li { margin-bottom: 0.5rem; font-size: 0.9rem; color: #4c1d95; }
+            .footer { margin-top: 3rem; text-align: center; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 1rem; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Student Performance Analytics</h1>
+              <p>Individual Student Summary Report</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="font-weight: bold;">Date: ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          <div class="metadata">
+            <div>
+              <p><strong>Student Email:</strong> ${student.name}</p>
+              <p><strong>GitHub Profile:</strong> ${student.github || 'Not Connected'}</p>
+            </div>
+            <div>
+              <p><strong>LeetCode Profile:</strong> ${student.leetcode || 'Not Connected'}</p>
+              <p><strong>Kaggle Profile:</strong> ${student.kaggle || 'Not Connected'}</p>
+            </div>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Platform Statistics</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Platform</th>
+                  <th>Metric Name</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td rowspan="3" style="font-weight: bold;">GitHub</td>
+                  <td>Repositories Count</td>
+                  <td>${git.repos || 0}</td>
+                </tr>
+                <tr>
+                  <td>Total Commits (Year)</td>
+                  <td>${git.totalCommits || 0}</td>
+                </tr>
+                <tr>
+                  <td>Activity Streak</td>
+                  <td>${git.currentStreak || 0} days</td>
+                </tr>
+                <tr>
+                  <td rowspan="4" style="font-weight: bold;">LeetCode</td>
+                  <td>Total Problems Solved</td>
+                  <td>${leet.totalSolved || 0}</td>
+                </tr>
+                <tr>
+                  <td>Easy Problems</td>
+                  <td>${leet.easy || 0}</td>
+                </tr>
+                <tr>
+                  <td>Medium Problems</td>
+                  <td>${leet.medium || 0}</td>
+                </tr>
+                <tr>
+                  <td>Hard Problems</td>
+                  <td>${leet.hard || 0}</td>
+                </tr>
+                <tr>
+                  <td rowspan="4" style="font-weight: bold;">Kaggle</td>
+                  <td>Datasets Published</td>
+                  <td>${kag.datasets || 0}</td>
+                </tr>
+                <tr>
+                  <td>Notebooks Created</td>
+                  <td>${kag.notebooks || 0}</td>
+                </tr>
+                <tr>
+                  <td>Badge Level</td>
+                  <td>${kag.badge || 'Novice'}</td>
+                </tr>
+                <tr>
+                  <td>Medals (Gold / Silver / Bronze)</td>
+                  <td>${kag.medals?.gold || 0} G / ${kag.medals?.silver || 0} S / ${kag.medals?.bronze || 0} B</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="section">
+            <h2 class="section-title">Competency Evaluation</h2>
+            <div class="progress-bar-container">
+              <div class="progress-bar-label">Problem Solving (LeetCode)</div>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${evaluation.problem_solving}%;"></div></div>
+              <div class="progress-value">${evaluation.problem_solving}%</div>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-label">Development (GitHub)</div>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${evaluation.development}%;"></div></div>
+              <div class="progress-value">${evaluation.development}%</div>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-label">Data Science (Kaggle)</div>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${evaluation.data_science}%;"></div></div>
+              <div class="progress-value">${evaluation.data_science}%</div>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar-label">Consistency Score</div>
+              <div class="progress-bar"><div class="progress-fill" style="width: ${evaluation.consistency}%;"></div></div>
+              <div class="progress-value">${evaluation.consistency}%</div>
+            </div>
+          </div>
+
+          ${aiSummary ? `
+          <div class="section">
+            <h2 class="section-title">AI Coding Coach Recommendations</h2>
+            <div class="recommendations-card">
+              <p>"${aiSummary}"</p>
+              ${aiRecs.length > 0 ? `
+              <ul>
+                ${aiRecs.map(rec => `<li>${rec}</li>`).join('')}
+              </ul>
+              ` : ''}
+            </div>
+          </div>
+          ` : ''}
+
+          ${goals.length > 0 ? `
+          <div class="section">
+            <h2 class="section-title">Active Goals Tracker</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Goal Description</th>
+                  <th>Category</th>
+                  <th>Target</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${goals.map(g => `
+                  <tr>
+                    <td>${g.title}</td>
+                    <td>${g.category.replace('_', ' ').toUpperCase()}</td>
+                    <td>${g.target}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+          ` : ''}
+
+          <div class="footer">
+            <p>Generated automatically via Student Analytics Dashboard. Professional Report.</p>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const downloadCohortPDF = () => {
+    if (!cohortData) return;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Cohort Analytics Report - Overview</title>
+          <style>
+            body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1f2937; line-height: 1.5; padding: 2rem; margin: 0; }
+            .header { border-bottom: 2px solid #e5e7eb; padding-bottom: 1rem; margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
+            .header h1 { margin: 0; font-size: 1.75rem; color: #111827; }
+            .header p { margin: 0.25rem 0 0 0; color: #4b5563; font-size: 0.9rem; }
+            .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem; }
+            .stat-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 1rem; text-align: center; }
+            .stat-card p { margin: 0; font-size: 0.8rem; color: #6b7280; text-transform: uppercase; font-weight: bold; }
+            .stat-card h3 { margin: 0.25rem 0 0 0; font-size: 1.5rem; color: #111827; font-weight: bold; }
+            .section { margin-bottom: 2.5rem; }
+            .section-title { font-size: 1.2rem; font-weight: bold; color: #1e1b4b; border-left: 4px solid #4f46e5; padding-left: 0.75rem; margin: 0 0 1rem 0; text-transform: uppercase; letter-spacing: 0.05em; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.9rem; }
+            th, td { border: 1px solid #e5e7eb; padding: 0.75rem; text-align: left; }
+            th { background: #f3f4f6; font-weight: bold; color: #374151; }
+            .advisor-card { background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px; padding: 1.5rem; margin-top: 1rem; }
+            .advisor-card p { font-style: italic; margin: 0 0 1rem 0; font-size: 0.95rem; }
+            .advisor-card ul { margin: 0; padding-left: 1.25rem; }
+            .advisor-card li { margin-bottom: 0.5rem; font-size: 0.9rem; color: #4c1d95; }
+            .footer { margin-top: 3rem; text-align: center; font-size: 0.75rem; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 1rem; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <h1>Cohort Analytics Overview</h1>
+              <p>Class Dashboard Summary Report</p>
+            </div>
+            <div style="text-align: right;">
+              <p style="font-weight: bold;">Date: ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <p>Total Students</p>
+              <h3>${cohortData.totalStudents}</h3>
+            </div>
+            <div class="stat-card">
+              <p>Active Ratio</p>
+              <h3>${cohortData.activeRatio}%</h3>
+            </div>
+            <div class="stat-card">
+              <p>Avg LeetCode Solves</p>
+              <h3>${cohortData.averages?.avgLeetCode || 0}</h3>
+            </div>
+            <div class="stat-card">
+              <p>Avg GitHub Commits</p>
+              <h3>${cohortData.averages?.avgGitHubCommits || 0}</h3>
+            </div>
+          </div>
+
+          ${adminAiSummary ? `
+          <div class="section">
+            <h2 class="section-title">Cohort AI Advisor Recommendations</h2>
+            <div class="advisor-card">
+              <p>"${adminAiSummary}"</p>
+              ${adminAiRecs.length > 0 ? `
+              <ul>
+                ${adminAiRecs.map(rec => `<li>${rec}</li>`).join('')}
+              </ul>
+              ` : ''}
+            </div>
+          </div>
+          ` : ''}
+
+          <div class="section">
+            <h2 class="section-title">Student Directory Details</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Student Email</th>
+                  <th>GitHub Link Status</th>
+                  <th>LeetCode Link Status</th>
+                  <th>Kaggle Link Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${studentsList.map(s => `
+                  <tr>
+                    <td>${s.name}</td>
+                    <td>${s.github ? 'Connected' : 'Not Connected'}</td>
+                    <td>${s.leetcode ? 'Connected' : 'Not Connected'}</td>
+                    <td>${s.kaggle ? 'Connected' : 'Not Connected'}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="footer">
+            <p>Generated automatically via Student Analytics Dashboard. Professional Cohort Report.</p>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              window.print();
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   const handleSyncData = async () => {
     if (!user || !user.email) return;
     setSyncing(true);
@@ -578,6 +886,43 @@ function App() {
             >
               {isAdminView ? 'Student View' : 'Admin Portal'}
             </button>
+            {isAdminView ? (
+              cohortData && (
+                <button 
+                  onClick={downloadCohortPDF} 
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    cursor: 'pointer', 
+                    background: '#f0fdf4', 
+                    color: '#16a34a', 
+                    border: '1px solid #bbf7d0', 
+                    borderRadius: '6px', 
+                    fontWeight: '600', 
+                    fontSize: '0.9rem' 
+                  }}
+                >
+                  Download PDF Report
+                </button>
+              )
+            ) : (
+              dashboardData && (
+                <button 
+                  onClick={downloadStudentPDF} 
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    cursor: 'pointer', 
+                    background: '#f0fdf4', 
+                    color: '#16a34a', 
+                    border: '1px solid #bbf7d0', 
+                    borderRadius: '6px', 
+                    fontWeight: '600', 
+                    fontSize: '0.9rem' 
+                  }}
+                >
+                  Download PDF Report
+                </button>
+              )
+            )}
             <button onClick={() => setHasSetup(false)} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', fontWeight: '500', fontSize: '0.9rem' }}>
               Edit Profiles
             </button>
