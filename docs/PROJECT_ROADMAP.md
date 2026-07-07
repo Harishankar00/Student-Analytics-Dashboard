@@ -128,7 +128,7 @@ AI Layer - [x] Student Summary - [x] Student Recommendations - [x] Cohort Summar
 
 ## Phase 8
 
-Deployment - \[ \] Final Testing - \[ \] Optimization - \[ \] Production
+Deployment - [x] Final Testing - [x] Optimization - [x] Production
 Deployment
 
 ------------------------------------------------------------------------

@@ -57,10 +57,61 @@ function App() {
   const [isAdminView, setIsAdminView] = useState(false);
   const [cohortData, setCohortData] = useState(null);
   const [studentsList, setStudentsList] = useState([]);
-  const [compareEmail1, setCompareEmail1] = useState('');
-  const [compareEmail2, setCompareEmail2] = useState('');
-  const [comparisonResult, setComparisonResult] = useState(null);
+  const [selectedCompareEmails, setSelectedCompareEmails] = useState([]);
+  const [comparisonData, setComparisonData] = useState([]);
   const [comparisonLoading, setComparisonLoading] = useState(false);
+
+  const handleToggleSelectStudent = (email) => {
+    setSelectedCompareEmails(prev => {
+      if (prev.includes(email)) {
+        return prev.filter(e => e !== email);
+      } else {
+        return [...prev, email];
+      }
+    });
+  };
+
+  const handleCompareSelected = async () => {
+    if (selectedCompareEmails.length < 2) return;
+    setComparisonLoading(true);
+    try {
+      const results = [];
+      for (const email of selectedCompareEmails) {
+        const res = await fetch(`http://127.0.0.1:5000/api/student/${email}`);
+        if (res.ok) {
+          const data = await res.json();
+          results.push(data);
+        }
+      }
+      setComparisonData(results);
+    } catch (err) {
+      console.error("Error comparing students:", err);
+    }
+    setComparisonLoading(false);
+  };
+
+  // Sync state
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncData = async () => {
+    if (!user || !user.email) return;
+    setSyncing(true);
+    try {
+      const res = await fetch(`http://127.0.0.1:5000/api/student/${user.email}/sync`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        await checkStudentSetup(user.email);
+        alert("Metrics synchronized successfully");
+      } else {
+        alert("Failed to sync metrics. Please verify credentials");
+      }
+    } catch (err) {
+      console.error("Error syncing student data:", err);
+      alert("Error syncing metrics");
+    }
+    setSyncing(false);
+  };
 
   // AI Recommendation states
   const [aiSummary, setAiSummary] = useState('');
@@ -125,20 +176,7 @@ function App() {
     }
   };
 
-  const fetchComparison = async () => {
-    if (!compareEmail1 || !compareEmail2) return;
-    setComparisonLoading(true);
-    try {
-      const res = await fetch(`http://127.0.0.1:5000/api/admin/comparison?email1=${compareEmail1}&email2=${compareEmail2}`);
-      if (res.ok) {
-        const data = await res.json();
-        setComparisonResult(data);
-      }
-    } catch (err) {
-      console.error("Error fetching comparison:", err);
-    }
-    setComparisonLoading(false);
-  };
+
 
   useEffect(() => {
     if (isAdminView) {
@@ -175,7 +213,7 @@ function App() {
         })
       });
       if (res.ok) {
-        setGoalStatusMsg('✅ Goal added!');
+        setGoalStatusMsg('Goal added!');
         setGoalTitle('');
         setGoalTarget('');
         fetchGoals(user.email);
@@ -280,12 +318,12 @@ function App() {
       if (res.ok) {
         setKaggleUser(data.username);
         setKaggleKey(data.key);
-        setSetupStatus('✅ Kaggle API key parsed successfully!');
+        setSetupStatus('Kaggle API key parsed successfully!');
       } else {
-        setSetupStatus('❌ Error parsing Kaggle JSON: ' + data.error);
+        setSetupStatus('Error parsing Kaggle JSON: ' + data.error);
       }
     } catch (err) {
-      setSetupStatus('❌ Kaggle upload failed. Make sure the backend is running.');
+      setSetupStatus('Kaggle upload failed. Make sure the backend is running.');
     }
   };
 
@@ -307,14 +345,14 @@ function App() {
       });
       
       if (res.ok) {
-         setSetupStatus('✅ Platforms linked successfully!');
+         setSetupStatus('Platforms linked successfully!');
          // Re-check to load dashboard
          setTimeout(() => checkStudentSetup(user.email), 1000);
       } else {
-         setSetupStatus('❌ Failed to link platforms.');
+         setSetupStatus('Failed to link platforms.');
       }
     } catch (err) {
-      setSetupStatus('❌ Request failed. Make sure the Flask backend is running on port 5000.');
+      setSetupStatus('Request failed. Make sure the Flask backend is running on port 5000.');
     }
   };
 
@@ -325,47 +363,75 @@ function App() {
   // --- RENDER AUTH SCREEN ---
   if (!user) {
     return (
-      <div className="App" style={{ padding: '2rem', fontFamily: 'Inter, sans-serif', maxWidth: '400px', margin: '4rem auto', textAlign: 'left', background: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
-        <h1 style={{ textAlign: 'center', marginBottom: '2rem', fontSize: '1.5rem', color: '#111827' }}>Student Analytics</h1>
-        <h2>{isLogin ? 'Sign In' : 'Sign Up'}</h2>
-        
-        {authError && <p style={{ color: '#ef4444', fontSize: '0.9rem', marginBottom: '1rem' }}>{authError}</p>}
-        
-        <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div>
-            <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151' }}>Email</label>
-            <input 
-              type="email" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              required 
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.25rem', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-            />
+      <div style={{ display: 'flex', minHeight: '100vh', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)', fontFamily: 'Inter, sans-serif', padding: '1rem', boxSizing: 'border-box' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', width: '100%', maxWidth: '420px', boxSizing: 'border-box' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <h1 style={{ margin: '0 0 0.5rem 0', fontSize: '1.75rem', fontWeight: '800', color: '#1e1b4b' }}>Student Analytics</h1>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Analyze coding profiles & track progress</p>
           </div>
-          <div>
-            <label style={{ fontSize: '0.9rem', fontWeight: '500', color: '#374151' }}>Password</label>
-            <input 
-              type="password" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.25rem', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-            />
-          </div>
-          <button type="submit" style={{ padding: '0.75rem', cursor: 'pointer', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', marginTop: '0.5rem' }}>
-            {isLogin ? 'Sign In' : 'Sign Up'}
-          </button>
-        </form>
-        
-        <p style={{ marginTop: '1.5rem', fontSize: '0.9rem', textAlign: 'center', color: '#6b7280' }}>
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button 
-            onClick={() => setIsLogin(!isLogin)} 
-            style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontWeight: '500' }}
-          >
-            {isLogin ? 'Sign Up' : 'Sign In'}
-          </button>
-        </p>
+          
+          <h2 style={{ fontSize: '1.25rem', color: '#111827', margin: '0 0 1.5rem 0', fontWeight: '700' }}>
+            {isLogin ? 'Sign In to Dashboard' : 'Create Student Account'}
+          </h2>
+          
+          {authError && (
+            <div style={{ padding: '0.75rem 1rem', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', fontSize: '0.85rem', marginBottom: '1.5rem', border: '1px solid #fca5a5' }}>
+              {authError}
+            </div>
+          )}
+          
+          <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            <div>
+              <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#4b5563', display: 'block', marginBottom: '0.35rem' }}>Email Address</label>
+              <input 
+                type="email" 
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)} 
+                required 
+                placeholder="you@university.edu"
+                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', boxSizing: 'border-box', fontSize: '0.9rem', outline: 'none' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '0.875rem', fontWeight: '600', color: '#4b5563', display: 'block', marginBottom: '0.35rem' }}>Password</label>
+              <input 
+                type="password" 
+                value={password} 
+                onChange={(e) => setPassword(e.target.value)} 
+                required 
+                placeholder="••••••••"
+                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', boxSizing: 'border-box', fontSize: '0.9rem', outline: 'none' }}
+              />
+            </div>
+            <button 
+              type="submit" 
+              style={{ 
+                padding: '0.85rem', 
+                cursor: 'pointer', 
+                background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '8px', 
+                fontWeight: 'bold', 
+                fontSize: '0.95rem',
+                boxShadow: '0 4px 6px rgba(79, 70, 229, 0.25)',
+                marginTop: '0.5rem'
+              }}
+            >
+              {isLogin ? 'Sign In' : 'Sign Up'}
+            </button>
+          </form>
+          
+          <p style={{ marginTop: '1.75rem', fontSize: '0.875rem', textAlign: 'center', color: '#6b7280' }}>
+            {isLogin ? "New to the platform? " : "Already registered? "}
+            <button 
+              onClick={() => setIsLogin(!isLogin)} 
+              style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontWeight: '600', textDecoration: 'underline' }}
+            >
+              {isLogin ? 'Create account' : 'Sign in here'}
+            </button>
+          </p>
+        </div>
       </div>
     );
   }
@@ -373,69 +439,89 @@ function App() {
   // --- RENDER SETUP SCREEN ---
   if (hasSetup === false) {
     return (
-      <div style={{ maxWidth: '600px', margin: '4rem auto', textAlign: 'left', background: 'white', padding: '2.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', fontFamily: 'Inter, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h2 style={{ margin: 0 }}>Platform Setup</h2>
-          <button onClick={handleSignOut} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '6px', fontWeight: '500' }}>
-            Sign Out
-          </button>
-        </div>
-        
-        <p style={{ fontSize: '0.95rem', color: '#6b7280', marginBottom: '2rem' }}>
-          Welcome, <strong>{user.email}</strong>! Link your developer profiles to generate your analytics dashboard.
-        </p>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div>
-            <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>GitHub Username</label>
-            <input 
-              type="text" 
-              value={github} 
-              onChange={(e) => setGithub(e.target.value)} 
-              placeholder="e.g. torvalds"
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-            />
+      <div style={{ display: 'flex', minHeight: '100vh', justifyContent: 'center', alignItems: 'center', background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%)', fontFamily: 'Inter, sans-serif', padding: '2rem 1rem', boxSizing: 'border-box' }}>
+        <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.25)', width: '100%', maxWidth: '640px', boxSizing: 'border-box' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '1rem' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#1e1b4b' }}>Platform Setup</h2>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: '#6b7280' }}>Link your developer profiles to analyze metrics</p>
+            </div>
+            <button onClick={handleSignOut} style={{ padding: '0.5rem 1rem', cursor: 'pointer', background: '#f3f4f6', color: '#4b5563', border: 'none', borderRadius: '6px', fontWeight: '600', fontSize: '0.85rem' }}>
+              Sign Out
+            </button>
           </div>
+          
+          <p style={{ fontSize: '0.9rem', color: '#4b5563', marginBottom: '2rem' }}>
+            Welcome! We will track your achievements across GitHub, LeetCode, and Kaggle. Please enter your usernames below:
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div>
+              <label style={{ fontWeight: '700', color: '#374151', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>GitHub Username</label>
+              <input 
+                type="text" 
+                value={github} 
+                onChange={(e) => setGithub(e.target.value)} 
+                placeholder="e.g. torvalds"
+                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', boxSizing: 'border-box', fontSize: '0.9rem', outline: 'none' }}
+              />
+            </div>
 
-          <div>
-            <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>LeetCode Username</label>
-            <input 
-              type="text" 
-              value={leetcode} 
-              onChange={(e) => setLeetcode(e.target.value)} 
-              placeholder="e.g. tourist"
-              style={{ width: '100%', padding: '0.75rem', marginTop: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', boxSizing: 'border-box' }}
-            />
-          </div>
+            <div>
+              <label style={{ fontWeight: '700', color: '#374151', fontSize: '0.875rem', display: 'block', marginBottom: '0.5rem' }}>LeetCode Username</label>
+              <input 
+                type="text" 
+                value={leetcode} 
+                onChange={(e) => setLeetcode(e.target.value)} 
+                placeholder="e.g. tourist"
+                style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #d1d5db', boxSizing: 'border-box', fontSize: '0.9rem', outline: 'none' }}
+              />
+            </div>
 
-            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <label style={{ fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>Kaggle Integration (Optional)</label>
-              <ol style={{ fontSize: '0.85rem', color: '#475569', marginTop: '0.75rem', paddingLeft: '1.25rem', marginBottom: '1rem' }}>
-                <li>Go to Kaggle.com -&gt; Settings</li>
+            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <label style={{ fontWeight: '700', color: '#374151', fontSize: '0.875rem', display: 'block' }}>Kaggle Integration (Optional)</label>
+              <ol style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.75rem', paddingLeft: '1.25rem', marginBottom: '1.25rem', lineHeight: '1.5' }}>
+                <li>Go to <a href="https://www.kaggle.com" target="_blank" rel="noreferrer" style={{ color: '#4f46e5', fontWeight: '600' }}>Kaggle.com</a> -&gt; Settings</li>
                 <li>Under the API section, click <strong>Create Legacy API Key</strong></li>
                 <li>Upload the downloaded <code>kaggle.json</code> file below</li>
               </ol>
-            <input 
-              type="file" 
-              accept=".json"
-              onChange={handleKaggleUpload}
-              style={{ fontSize: '0.85rem' }}
-            />
-            {kaggleUser && <p style={{ fontSize: '0.85rem', color: '#10b981', marginTop: '0.75rem', fontWeight: '500' }}>✅ Detected Kaggle Username: {kaggleUser}</p>}
-          </div>
-
-          {setupStatus && (
-            <div style={{ padding: '1rem', background: setupStatus.includes('✅') ? '#d1fae5' : '#fee2e2', color: setupStatus.includes('✅') ? '#065f46' : '#991b1b', borderRadius: '6px', fontSize: '0.9rem' }}>
-              {setupStatus}
+              <input 
+                type="file" 
+                accept=".json"
+                onChange={handleKaggleUpload}
+                style={{ fontSize: '0.85rem', color: '#4b5563' }}
+              />
+              {kaggleUser && (
+                <div style={{ fontSize: '0.85rem', color: '#065f46', background: '#d1fae5', padding: '0.5rem 0.75rem', borderRadius: '6px', marginTop: '1rem', fontWeight: '500', display: 'inline-block' }}>
+                  Detected Kaggle: <strong>{kaggleUser}</strong>
+                </div>
+              )}
             </div>
-          )}
 
-          <button 
-            onClick={handlePlatformSetup} 
-            style={{ padding: '0.75rem', cursor: 'pointer', background: '#10b981', color: 'white', border: 'none', borderRadius: '6px', fontSize: '1rem', fontWeight: 'bold', marginTop: '1rem' }}
-          >
-            Save & Generate Dashboard
-          </button>
+            {setupStatus && (
+              <div style={{ padding: '1rem', background: setupStatus.toLowerCase().includes('success') ? '#d1fae5' : '#fee2e2', color: setupStatus.toLowerCase().includes('success') ? '#065f46' : '#991b1b', borderRadius: '8px', fontSize: '0.9rem', border: '1px solid', borderColor: setupStatus.toLowerCase().includes('success') ? '#a7f3d0' : '#fca5a5' }}>
+                {setupStatus}
+              </div>
+            )}
+
+            <button 
+              onClick={handlePlatformSetup} 
+              style={{ 
+                padding: '0.85rem', 
+                cursor: 'pointer', 
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '8px', 
+                fontSize: '1rem', 
+                fontWeight: 'bold', 
+                marginTop: '1rem',
+                boxShadow: '0 4px 6px rgba(16, 185, 129, 0.25)'
+              }}
+            >
+              Save & Generate Dashboard
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -459,6 +545,24 @@ function App() {
             </p>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {!isAdminView && (
+              <button 
+                onClick={handleSyncData} 
+                disabled={syncing}
+                style={{ 
+                  padding: '0.5rem 1rem', 
+                  cursor: 'pointer', 
+                  background: '#ecfdf5', 
+                  color: '#059669', 
+                  border: '1px solid #a7f3d0', 
+                  borderRadius: '6px', 
+                  fontWeight: '600', 
+                  fontSize: '0.9rem' 
+                }}
+              >
+                {syncing ? 'Syncing...' : 'Sync Profiles'}
+              </button>
+            )}
             <button 
               onClick={() => setIsAdminView(!isAdminView)} 
               style={{ 
@@ -482,13 +586,13 @@ function App() {
             </button>
           </div>
         </header>
-
+ 
         {isAdminView ? (
           <div>
             {adminAiSummary && (
               <div style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 15px rgba(49, 46, 129, 0.15)' }}>
                 <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                  🤖 Cohort AI Advisor Recommendations
+                  Cohort AI Advisor Recommendations
                 </h3>
                 <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', fontStyle: 'italic', opacity: 0.9 }}>
                   "{adminAiSummary}"
@@ -537,6 +641,7 @@ function App() {
                   <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
                     <thead>
                       <tr style={{ borderBottom: '2px solid #e5e7eb', color: '#4b5563' }}>
+                        <th style={{ padding: '0.75rem', width: '60px' }}>Select</th>
                         <th style={{ padding: '0.75rem' }}>Email</th>
                         <th style={{ padding: '0.75rem' }}>GitHub</th>
                         <th style={{ padding: '0.75rem' }}>LeetCode</th>
@@ -546,10 +651,18 @@ function App() {
                     <tbody>
                       {studentsList.map((stud) => (
                         <tr key={stud.name} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                            <input 
+                              type="checkbox"
+                              checked={selectedCompareEmails.includes(stud.name)}
+                              onChange={() => handleToggleSelectStudent(stud.name)}
+                              style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                          </td>
                           <td style={{ padding: '0.75rem', fontWeight: '500', color: '#111827' }}>{stud.name}</td>
                           <td style={{ padding: '0.75rem', color: '#4b5563' }}>{stud.github}</td>
                           <td style={{ padding: '0.75rem', color: '#4b5563' }}>{stud.leetcode}</td>
-                          <td style={{ padding: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                          <td style={{ padding: '0.75rem' }}>
                             <button 
                               onClick={async () => {
                                 await checkStudentSetup(stud.name);
@@ -559,137 +672,123 @@ function App() {
                             >
                               View
                             </button>
-                            <button 
-                              onClick={() => {
-                                if (!compareEmail1) setCompareEmail1(stud.name);
-                                else if (!compareEmail2) setCompareEmail2(stud.name);
-                              }}
-                              style={{ padding: '0.25rem 0.5rem', cursor: 'pointer', background: '#ecfdf5', color: '#059669', border: 'none', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold' }}
-                            >
-                              Select
-                            </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
 
-              {/* Comparison Panel Card */}
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Student Comparison Tool</h3>
-                
-                {/* Selectors */}
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem' }}>STUDENT A</label>
-                    <select 
-                      value={compareEmail1} 
-                      onChange={(e) => setCompareEmail1(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
-                    >
-                      <option value="">Select Student A</option>
-                      {studentsList.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                    </select>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', fontWeight: 'bold', marginBottom: '0.25rem' }}>STUDENT B</label>
-                    <select 
-                      value={compareEmail2} 
-                      onChange={(e) => setCompareEmail2(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #d1d5db', background: 'white' }}
-                    >
-                      <option value="">Select Student B</option>
-                      {studentsList.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', alignItems: 'center' }}>
                   <button 
-                    onClick={fetchComparison}
-                    disabled={!compareEmail1 || !compareEmail2}
-                    style={{ flex: 1, padding: '0.65rem', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: (!compareEmail1 || !compareEmail2) ? 0.5 : 1 }}
+                    onClick={handleCompareSelected}
+                    disabled={selectedCompareEmails.length < 2}
+                    style={{ padding: '0.65rem 1.25rem', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', opacity: selectedCompareEmails.length < 2 ? 0.5 : 1 }}
                   >
-                    {comparisonLoading ? 'Comparing...' : 'Compare Side-by-Side'}
+                    Compare Selected ({selectedCompareEmails.length})
                   </button>
                   <button 
                     onClick={() => {
-                      setCompareEmail1('');
-                      setCompareEmail2('');
-                      setComparisonResult(null);
+                      setSelectedCompareEmails([]);
+                      setComparisonData([]);
                     }}
                     style={{ padding: '0.65rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '6px', cursor: 'pointer' }}
                   >
-                    Clear
+                    Clear Selection
                   </button>
                 </div>
+              </div>
 
-                {/* Overlaid Radar Chart */}
-                {comparisonResult && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    
-                    {/* Radar Chart */}
-                    <div style={{ height: 260, width: '100%', display: 'flex', justifyContent: 'center' }}>
-                      <ResponsiveContainer>
-                        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={[
-                          { subject: 'Problem Solving', A: comparisonResult.studentA.evaluation.problem_solving, B: comparisonResult.studentB.evaluation.problem_solving, fullMark: 100 },
-                          { subject: 'Development', A: comparisonResult.studentA.evaluation.development, B: comparisonResult.studentB.evaluation.development, fullMark: 100 },
-                          { subject: 'Data Science', A: comparisonResult.studentA.evaluation.data_science, B: comparisonResult.studentB.evaluation.data_science, fullMark: 100 },
-                          { subject: 'Consistency', A: comparisonResult.studentA.evaluation.consistency, B: comparisonResult.studentB.evaluation.consistency, fullMark: 100 }
-                        ]}>
-                          <PolarGrid stroke="#e5e7eb" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 10 }} />
-                          <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                          <Radar name={comparisonResult.studentA.profile.github} dataKey="A" stroke="#4f46e5" fill="#4f46e5" fillOpacity={0.35} />
-                          <Radar name={comparisonResult.studentB.profile.github} dataKey="B" stroke="#10b981" fill="#10b981" fillOpacity={0.35} />
-                          <Legend />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
+              {/* Multi-Student Comparison Panel Card */}
+              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+                <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Student Comparison Panel</h3>
+                
+                {comparisonLoading && (
+                  <p style={{ color: '#4b5563', fontSize: '0.9rem', fontStyle: 'italic' }}>Loading comparison details...</p>
+                )}
 
-                    {/* Comparison Table */}
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'center' }}>
+                {!comparisonLoading && comparisonData.length === 0 && (
+                  <p style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>Select 2 or more students in the directory to compare metrics.</p>
+                )}
+
+                {!comparisonLoading && comparisonData.length > 0 && (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
                       <thead>
-                        <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                          <th style={{ padding: '0.5rem', textAlign: 'left' }}>Metric</th>
-                          <th style={{ padding: '0.5rem', color: '#4f46e5' }}>{comparisonResult.studentA.profile.github} (A)</th>
-                          <th style={{ padding: '0.5rem', color: '#10b981' }}>{comparisonResult.studentB.profile.github} (B)</th>
+                        <tr style={{ borderBottom: '2px solid #cbd5e1', color: '#475569', background: '#f8fafc' }}>
+                          <th style={{ padding: '0.65rem', fontWeight: '700' }}>Metric / Score</th>
+                          {comparisonData.map(c => (
+                            <th key={c.student.name} style={{ padding: '0.65rem', fontWeight: '700', color: '#4f46e5' }}>{c.student.github || c.student.name}</th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>GitHub Repos</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.github?.repos || 0}</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.github?.repos || 0}</td>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '600', color: '#374151' }}>GitHub Repositories</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem' }}>{c.metrics?.github?.repos || 0}</td>
+                          ))}
                         </tr>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>GitHub Commits</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.github?.totalCommits || 0}</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.github?.totalCommits || 0}</td>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '600', color: '#374151' }}>GitHub Commits</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem' }}>{c.metrics?.github?.totalCommits || 0}</td>
+                          ))}
                         </tr>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>LeetCode Solved</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.leetcode?.totalSolved || 0}</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.leetcode?.totalSolved || 0}</td>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '600', color: '#374151' }}>LeetCode Total Solved</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem' }}>{c.metrics?.leetcode?.totalSolved || 0}</td>
+                          ))}
                         </tr>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>Kaggle Datasets</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentA.metrics.kaggle?.datasets || 0}</td>
-                          <td style={{ padding: '0.5rem' }}>{comparisonResult.studentB.metrics.kaggle?.datasets || 0}</td>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '600', color: '#374151' }}>LeetCode Easy / Med / Hard</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem' }}>
+                              {c.metrics?.leetcode?.easy || 0} / {c.metrics?.leetcode?.medium || 0} / {c.metrics?.leetcode?.hard || 0}
+                            </td>
+                          ))}
                         </tr>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                          <td style={{ padding: '0.5rem', textAlign: 'left', fontWeight: '500' }}>Active Status</td>
-                          <td style={{ padding: '0.5rem', color: comparisonResult.studentA.profile.status === 'Active' ? '#059669' : '#dc2626', fontWeight: '600' }}>{comparisonResult.studentA.profile.status}</td>
-                          <td style={{ padding: '0.5rem', color: comparisonResult.studentB.profile.status === 'Active' ? '#059669' : '#dc2626', fontWeight: '600' }}>{comparisonResult.studentB.profile.status}</td>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '600', color: '#374151' }}>Kaggle Notebooks</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem' }}>{c.metrics?.kaggle?.notebooks || 0}</td>
+                          ))}
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '600', color: '#374151' }}>Kaggle Datasets</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem' }}>{c.metrics?.kaggle?.datasets || 0}</td>
+                          ))}
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '700', color: '#374151' }}>Problem Solving Score</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem', fontWeight: '700' }}>{c.evaluation?.problem_solving || 0}%</td>
+                          ))}
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '700', color: '#374151' }}>Development Score</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem', fontWeight: '700' }}>{c.evaluation?.development || 0}%</td>
+                          ))}
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '700', color: '#374151' }}>Data Science Score</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem', fontWeight: '700' }}>{c.evaluation?.data_science || 0}%</td>
+                          ))}
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                          <td style={{ padding: '0.65rem', fontWeight: '700', color: '#374151' }}>Consistency Score</td>
+                          {comparisonData.map(c => (
+                            <td key={c.student.name} style={{ padding: '0.65rem', fontWeight: '700' }}>{c.evaluation?.consistency || 0}%</td>
+                          ))}
                         </tr>
                       </tbody>
                     </table>
-
                   </div>
                 )}
-
               </div>
 
             </div>
@@ -699,7 +798,7 @@ function App() {
             {aiSummary && (
               <div style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white', padding: '1.5rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 15px rgba(49, 46, 129, 0.15)' }}>
                 <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                  🤖 Personalized AI Coach Analysis
+                  Personalized AI Coach Analysis
                 </h3>
                 <p style={{ margin: 0, fontSize: '0.95rem', lineHeight: '1.5', fontStyle: 'italic', opacity: 0.9 }}>
                   "{aiSummary}"
@@ -741,7 +840,7 @@ function App() {
                       </div>
                       <div>
                         <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Streak</p>
-                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b' }}>{metrics.github.currentStreak} 🔥</p>
+                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.5rem', fontWeight: 'bold', color: '#f59e0b' }}>{metrics.github.currentStreak} days</p>
                       </div>
                     </>
                   )}
@@ -749,14 +848,17 @@ function App() {
 
                 {metrics.github.topProjects && metrics.github.topProjects.length > 0 && (
                   <div>
-                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#374151', fontWeight: 'bold' }}>Top Projects</p>
+                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#374151', fontWeight: 'bold' }}>Top Projects (by Commits)</p>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                       {metrics.github.topProjects.map((p, i) => (
                         <a key={i} href={p.url} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', padding: '0.75rem', background: '#f9fafb', borderRadius: '6px', border: '1px solid #e5e7eb' }}>
                            <h4 style={{ margin: '0 0 0.25rem 0', fontSize: '0.85rem', color: '#2563eb', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</h4>
                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#6b7280' }}>
                              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{width: '8px', height: '8px', borderRadius: '50%', background: p.color || '#ccc'}}></span> {p.language}</span>
-                             <span>⭐ {p.stars}</span>
+                             <span>Stars: {p.stars}</span>
+                           </div>
+                           <div style={{ fontSize: '0.7rem', color: '#4b5563', marginTop: '0.25rem', textAlign: 'right' }}>
+                             Commits: {p.commits || 0}
                            </div>
                         </a>
                       ))}
@@ -822,6 +924,21 @@ function App() {
                     <span>Hard</span><span>{metrics.leetcode.hard}</span>
                   </div>
                 </div>
+                
+                {/* Solved Topics Tags */}
+                {metrics.leetcode.skills && metrics.leetcode.skills.length > 0 && (
+                  <div style={{ width: '100%', borderTop: '1px solid #f3f4f6', paddingTop: '1.25rem', marginTop: '1.25rem' }}>
+                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 'bold' }}>Top Solved Topics</p>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      {metrics.leetcode.skills.map((skill, index) => (
+                        <div key={index} style={{ fontSize: '0.75rem', background: '#f3f4f6', color: '#374151', padding: '0.35rem 0.65rem', borderRadius: '999px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span>{skill.name}</span>
+                          <span style={{ background: '#e5e7eb', padding: '0.1rem 0.35rem', borderRadius: '999px', fontSize: '0.7rem', color: '#6b7280' }}>{skill.solved}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <p style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>{student?.leetcode ? 'Loading data...' : 'Not Connected'}</p>
@@ -830,19 +947,49 @@ function App() {
 
           {/* Kaggle Card */}
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #3b82f6' }}>
-            <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.25rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <KaggleIcon /> Kaggle
             </h2>
             {metrics?.kaggle && metrics.kaggle.status === 'Linked' ? (
-              <div style={{ display: 'flex', gap: '2rem' }}>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datasets</p>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>{metrics.kaggle.datasets}</p>
+              <div>
+                {metrics.kaggle.badge && (
+                  <div style={{ 
+                    display: 'inline-block', 
+                    background: metrics.kaggle.badge === 'Master' ? '#fae8ff' : metrics.kaggle.badge === 'Expert' ? '#ffedd5' : metrics.kaggle.badge === 'Contributor' ? '#ccfbf1' : '#f1f5f9', 
+                    color: metrics.kaggle.badge === 'Master' ? '#86198f' : metrics.kaggle.badge === 'Expert' ? '#c2410c' : metrics.kaggle.badge === 'Contributor' ? '#0f766e' : '#475569', 
+                    padding: '0.25rem 0.75rem', 
+                    borderRadius: '999px', 
+                    fontSize: '0.8rem', 
+                    fontWeight: 'bold', 
+                    textTransform: 'uppercase', 
+                    marginBottom: '1rem' 
+                  }}>
+                    Badge Level: {metrics.kaggle.badge}
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '2rem' }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Datasets</p>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.75rem', fontWeight: 'bold', color: '#111827' }}>{metrics.kaggle.datasets}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notebooks</p>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '1.75rem', fontWeight: 'bold', color: '#111827' }}>{metrics.kaggle.notebooks || 0}</p>
+                  </div>
                 </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notebooks</p>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '2rem', fontWeight: 'bold', color: '#111827' }}>{metrics.kaggle.notebooks || 0}</p>
-                </div>
+                {metrics.kaggle.medals && (
+                  <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', borderTop: '1px solid #f3f4f6', paddingTop: '1rem' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#b59410' }}>
+                      Gold Medals: {metrics.kaggle.medals.gold || 0}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#94a3b8' }}>
+                      Silver Medals: {metrics.kaggle.medals.silver || 0}
+                    </div>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#b45309' }}>
+                      Bronze Medals: {metrics.kaggle.medals.bronze || 0}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <p style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>{student?.kaggle ? 'Loading data...' : 'Not Connected'}</p>
@@ -943,7 +1090,7 @@ function App() {
               <select 
                 value={goalCategory} 
                 onChange={(e) => setGoalCategory(e.target.value)}
-                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', background: 'white' }}
+                style={{ flex: 1, padding: '0.5rem 0.75rem', borderRadius: '6px', border: '1px solid #d1d5db', fontSize: '0.875rem', background: 'white', color: '#1f2937' }}
               >
                 <option value="leetcode_total">LeetCode Solved</option>
                 <option value="leetcode_easy">LeetCode Easy</option>
@@ -1017,21 +1164,79 @@ function App() {
           {/* Multi-Dimensional Skill Matrix Card */}
           {evaluation && (
             <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', borderTop: '4px solid #8b5cf6' }}>
-              <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Multi-Dimensional Skill Matrix</h3>
-              <div style={{ height: 300, width: '100%', display: 'flex', justifyContent: 'center' }}>
-                <ResponsiveContainer>
-                  <RadarChart cx="50%" cy="50%" outerRadius="75%" data={[
-                    { subject: 'Problem Solving', A: evaluation.problem_solving, fullMark: 100 },
-                    { subject: 'Development', A: evaluation.development, fullMark: 100 },
-                    { subject: 'Data Science', A: evaluation.data_science, fullMark: 100 },
-                    { subject: 'Consistency', A: evaluation.consistency, fullMark: 100 }
-                  ]}>
-                    <PolarGrid stroke="#e5e7eb" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 12 }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#9ca3af' }} />
-                    <Radar name="Skills" dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.4} />
-                  </RadarChart>
-                </ResponsiveContainer>
+              <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.1rem', color: '#374151' }}>Coding Competency Matrix</h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', alignItems: 'center' }}>
+                
+                {/* Left: Radar Chart */}
+                <div style={{ height: 260, display: 'flex', justifyContent: 'center' }}>
+                  <ResponsiveContainer>
+                    <RadarChart cx="50%" cy="50%" outerRadius="75%" data={[
+                      { subject: 'Problem Solving', A: evaluation.problem_solving, fullMark: 100 },
+                      { subject: 'Development', A: evaluation.development, fullMark: 100 },
+                      { subject: 'Data Science', A: evaluation.data_science, fullMark: 100 },
+                      { subject: 'Consistency', A: evaluation.consistency, fullMark: 100 }
+                    ]}>
+                      <PolarGrid stroke="#e5e7eb" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 11 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fill: '#9ca3af' }} />
+                      <Radar name="Skills" dataKey="A" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.4} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+                
+                {/* Right: Competency Explanation Panel */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  
+                  {/* Problem Solving */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold', color: '#374151', marginBottom: '0.25rem' }}>
+                      <span>Problem Solving (LeetCode)</span>
+                      <span>{evaluation.problem_solving}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${evaluation.problem_solving}%`, height: '100%', background: '#8b5cf6', borderRadius: '999px' }}></div>
+                    </div>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Algorithms practice. Based on solves weighted by difficulty (Easy=5, Med=15, Hard=30).</p>
+                  </div>
+
+                  {/* Development */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold', color: '#374151', marginBottom: '0.25rem' }}>
+                      <span>Development (GitHub)</span>
+                      <span>{evaluation.development}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${evaluation.development}%`, height: '100%', background: '#8b5cf6', borderRadius: '999px' }}></div>
+                    </div>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Software construction. Calculated from repository count and commit activity volume.</p>
+                  </div>
+
+                  {/* Data Science */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold', color: '#374151', marginBottom: '0.25rem' }}>
+                      <span>Data Science (Kaggle)</span>
+                      <span>{evaluation.data_science}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${evaluation.data_science}%`, height: '100%', background: '#8b5cf6', borderRadius: '999px' }}></div>
+                    </div>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Data analytics capability. Based on notebook publications and datasets.</p>
+                  </div>
+
+                  {/* Consistency */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 'bold', color: '#374151', marginBottom: '0.25rem' }}>
+                      <span>Consistency (Platform Activity)</span>
+                      <span>{evaluation.consistency}%</span>
+                    </div>
+                    <div style={{ height: '6px', background: '#e5e7eb', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ width: `${evaluation.consistency}%`, height: '100%', background: '#8b5cf6', borderRadius: '999px' }}></div>
+                    </div>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Active coding habits. Tracks active streaks and regular codebase updates.</p>
+                  </div>
+
+                </div>
               </div>
             </div>
           )}

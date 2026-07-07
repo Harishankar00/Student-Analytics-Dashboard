@@ -50,7 +50,7 @@ if os.path.exists('.env'):
         for line in f:
             if '=' in line and not line.startswith('#'):
                 k, v = line.strip().split('=', 1)
-                os.environ[k] = v.strip('"\'')
+                os.environ[k.strip()] = v.strip().strip('"\'')
 
 def fetch_github(username):
     if not username:
@@ -65,7 +65,7 @@ def fetch_github(username):
             query getUserProfile($username: String!) {
               user(login: $username) {
                 followers { totalCount }
-                repositories(first: 60, ownerAffiliations: OWNER, isFork: false, orderBy: {field: STARGAZERS, direction: DESC}) {
+                repositories(first: 60, ownerAffiliations: OWNER, isFork: false) {
                   totalCount
                   nodes {
                     name
@@ -75,6 +75,15 @@ def fetch_github(username):
                     primaryLanguage {
                       name
                       color
+                    }
+                    defaultBranchRef {
+                      target {
+                        ... on Commit {
+                          history {
+                            totalCount
+                          }
+                        }
+                      }
                     }
                   }
                 }
@@ -128,18 +137,16 @@ def fetch_github(username):
                 # Calculate languages & top projects
                 repos = user_data["repositories"]["nodes"]
                 lang_counts = {}
-                top_projects = []
+                
+                repos_with_commits = []
                 for r in repos:
-                    if len(top_projects) < 4:
-                        top_projects.append({
-                            "name": r["name"],
-                            "description": r.get("description") or "",
-                            "url": r["url"],
-                            "stars": r["stargazerCount"],
-                            "language": r["primaryLanguage"]["name"] if r.get("primaryLanguage") else "Unknown",
-                            "color": r["primaryLanguage"]["color"] if r.get("primaryLanguage") else "#ccc"
-                        })
-                        
+                    commit_count = 0
+                    if r.get("defaultBranchRef") and r["defaultBranchRef"].get("target"):
+                        target = r["defaultBranchRef"]["target"]
+                        if target.get("history"):
+                            commit_count = target["history"].get("totalCount", 0)
+                    repos_with_commits.append((r, commit_count))
+                    
                     if r.get("primaryLanguage"):
                         lang = r["primaryLanguage"]["name"]
                         color = r["primaryLanguage"]["color"] or "#cccccc"
@@ -147,6 +154,20 @@ def fetch_github(username):
                             lang_counts[lang] = {"count": 0, "color": color}
                         lang_counts[lang]["count"] += 1
                         
+                repos_with_commits.sort(key=lambda x: x[1], reverse=True)
+                
+                top_projects = []
+                for r, cc in repos_with_commits[:4]:
+                    top_projects.append({
+                        "name": r["name"],
+                        "description": r.get("description") or "",
+                        "url": r["url"],
+                        "stars": r["stargazerCount"],
+                        "commits": cc,
+                        "language": r["primaryLanguage"]["name"] if r.get("primaryLanguage") else "Unknown",
+                        "color": r["primaryLanguage"]["color"] if r.get("primaryLanguage") else "#ccc"
+                    })
+                    
                 languages = [
                     {"name": k, "count": v["count"], "color": v["color"]}
                     for k, v in sorted(lang_counts.items(), key=lambda x: x[1]["count"], reverse=True)
@@ -198,6 +219,20 @@ def fetch_leetcode(username):
             userCalendar {
               submissionCalendar
             }
+            tagProblemCounts {
+              advanced {
+                tagName
+                problemsSolved
+              }
+              intermediate {
+                tagName
+                problemsSolved
+              }
+              fundamental {
+                tagName
+                problemsSolved
+              }
+            }
           }
         }
         """
@@ -218,7 +253,7 @@ def fetch_leetcode(username):
                 
             matched_user = data["data"]["matchedUser"]
             stats = matched_user["submitStats"]["acSubmissionNum"]
-            result = {"totalSolved": 0, "easySolved": 0, "mediumSolved": 0, "hardSolved": 0}
+            result = {"totalSolved": 0, "easySolved": 0, "mediumSolved": 0, "hardSolved": 0, "skills": []}
             
             for stat in stats:
                 if stat["difficulty"] == "All":
@@ -229,6 +264,19 @@ def fetch_leetcode(username):
                     result["mediumSolved"] = stat["count"]
                 elif stat["difficulty"] == "Hard":
                     result["hardSolved"] = stat["count"]
+            
+            tag_counts = {}
+            if matched_user.get("tagProblemCounts"):
+                tpc = matched_user["tagProblemCounts"]
+                for category in ["fundamental", "intermediate", "advanced"]:
+                    for item in tpc.get(category, []):
+                        name = item.get("tagName")
+                        solved = item.get("problemsSolved", 0)
+                        if name and solved > 0:
+                            tag_counts[name] = tag_counts.get(name, 0) + solved
+            
+            sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            result["skills"] = [{"name": t[0], "solved": t[1]} for t in sorted_tags]
                     
             calendar_str = matched_user.get("userCalendar", {}).get("submissionCalendar", "{}")
             submission_calendar = json.loads(calendar_str)
@@ -247,11 +295,10 @@ import base64
 
 def fetch_kaggle(username, key=None):
     if not username or not key:
-        return {"username": username, "status": "Not Linked", "datasets": 0, "competitions": 0, "notebooks": 0}
+        return {"username": username, "status": "Not Linked", "datasets": 0, "competitions": 0, "notebooks": 0, "badge": "Novice", "medals": {"bronze": 0, "silver": 0, "gold": 0}}
         
     try:
-        # Verify auth by fetching user's datasets via official API
-        url = f"https://www.kaggle.com/api/v1/datasets/list?user={username}"
+        url = "https://www.kaggle.com/api/v1/datasets/list?mine=true"
         req = urllib.request.Request(url)
         
         auth_str = f"{username}:{key}"
@@ -262,10 +309,10 @@ def fetch_kaggle(username, key=None):
             datasets = json.loads(response.read().decode())
             dataset_count = len(datasets)
             
-        # Fetch notebooks/kernels
         notebook_count = 0
+        kernels = []
         try:
-            url_kernels = f"https://www.kaggle.com/api/v1/kernels/list?user={username}"
+            url_kernels = "https://www.kaggle.com/api/v1/kernels/list?mine=true"
             req_kernels = urllib.request.Request(url_kernels)
             req_kernels.add_header("Authorization", f"Basic {base64_str}")
             with urllib.request.urlopen(req_kernels, timeout=10) as response:
@@ -274,16 +321,45 @@ def fetch_kaggle(username, key=None):
         except Exception as kernel_e:
             print(f"Warning fetching Kaggle kernels for {username}: {kernel_e}")
             
+        dataset_medals = {"bronze": 0, "silver": 0, "gold": 0}
+        for d in datasets:
+            votes = d.get("voteCount", 0)
+            if votes >= 50: dataset_medals["gold"] += 1
+            elif votes >= 20: dataset_medals["silver"] += 1
+            elif votes >= 2: dataset_medals["bronze"] += 1
+
+        kernel_medals = {"bronze": 0, "silver": 0, "gold": 0}
+        for k in kernels:
+            votes = k.get("totalVotes", 0)
+            if votes >= 50: kernel_medals["gold"] += 1
+            elif votes >= 20: kernel_medals["silver"] += 1
+            elif votes >= 5: kernel_medals["bronze"] += 1
+
+        bronze = dataset_medals["bronze"] + kernel_medals["bronze"]
+        silver = dataset_medals["silver"] + kernel_medals["silver"]
+        gold = dataset_medals["gold"] + kernel_medals["gold"]
+
+        if gold > 0:
+            badge = "Master"
+        elif silver > 0:
+            badge = "Expert"
+        elif bronze > 0:
+            badge = "Contributor"
+        else:
+            badge = "Novice"
+            
         return {
             "username": username,
             "datasets": dataset_count,
-            "competitions": 0, # Placeholder as official API lacks profile stats
+            "competitions": 0,
             "notebooks": notebook_count,
-            "status": "Linked"
+            "status": "Linked",
+            "badge": badge,
+            "medals": {"bronze": bronze, "silver": silver, "gold": gold}
         }
     except Exception as e:
         print(f"Error fetching Kaggle for {username}: {e}")
-        return {"username": username, "status": "Error", "datasets": 0, "competitions": 0, "notebooks": 0}
+        return {"username": username, "status": "Error", "datasets": 0, "competitions": 0, "notebooks": 0, "badge": "Novice", "medals": {"bronze": 0, "silver": 0, "gold": 0}}
 
 def take_system_snapshot():
     print(f"[{datetime.datetime.now().isoformat()}] Running automated snapshot...")
@@ -309,14 +385,17 @@ def take_system_snapshot():
                 "totalSolved": leet_data.get("totalSolved", 0),
                 "easy": leet_data.get("easySolved", 0),
                 "medium": leet_data.get("mediumSolved", 0),
-                "hard": leet_data.get("hardSolved", 0)
+                "hard": leet_data.get("hardSolved", 0),
+                "skills": leet_data.get("skills", [])
             }
             
         kaggle_metrics = {
             "competitions": kag_data.get("competitions", 0),
             "datasets": kag_data.get("datasets", 0),
             "notebooks": kag_data.get("notebooks", 0),
-            "status": kag_data.get("status", "Unknown")
+            "status": kag_data.get("status", "Unknown"),
+            "badge": kag_data.get("badge", "Novice"),
+            "medals": kag_data.get("medals", {"bronze": 0, "silver": 0, "gold": 0})
         }
         
         current_metrics = {
@@ -347,7 +426,63 @@ def automated_snapshot_worker():
     time.sleep(5)
     while True:
         take_system_snapshot()
-        time.sleep(900)  # Sleep for 15 minutes to avoid rate limits
+        time.sleep(43200)  # Sleep for 12 hours to avoid rate limits
+
+@app.route('/api/student/<email>/sync', methods=['POST', 'OPTIONS'])
+def sync_student_data(email):
+    if request.method == 'OPTIONS':
+        return '', 204
+    try:
+        students = load_data()
+        student = next((s for s in students if s.get("name") == email), None)
+        if not student:
+            return jsonify({"error": "Student not found"}), 404
+            
+        git_data = fetch_github(student.get("github"))
+        leet_data = fetch_leetcode(student.get("leetcode"))
+        kag_data = fetch_kaggle(student.get("kaggle"), student.get("kaggle_key"))
+        
+        github_metrics = git_data if git_data else None
+        
+        leetcode_metrics = None
+        if leet_data and "totalSolved" in leet_data:
+            leetcode_metrics = {
+                "totalSolved": leet_data.get("totalSolved", 0),
+                "easy": leet_data.get("easySolved", 0),
+                "medium": leet_data.get("mediumSolved", 0),
+                "hard": leet_data.get("hardSolved", 0),
+                "skills": leet_data.get("skills", [])
+            }
+            
+        kaggle_metrics = {
+            "competitions": kag_data.get("competitions", 0),
+            "datasets": kag_data.get("datasets", 0),
+            "notebooks": kag_data.get("notebooks", 0),
+            "status": kag_data.get("status", "Unknown"),
+            "badge": kag_data.get("badge", "Novice"),
+            "medals": kag_data.get("medals", {"bronze": 0, "silver": 0, "gold": 0})
+        }
+        
+        current_metrics = {
+            "github": github_metrics,
+            "leetcode": leetcode_metrics,
+            "kaggle": kaggle_metrics
+        }
+        
+        snapshots_ref = db.collection('students').document(email).collection('snapshots')
+        snapshots_ref.add({
+            "timestamp": datetime.datetime.now().isoformat(),
+            "metrics": current_metrics
+        })
+        
+        # Clear AI Cache timestamp so fresh AI Coach summary is fetched
+        db.collection('students').document(email).update({
+            "aiLastUpdated": ""
+        })
+        
+        return jsonify({"status": "success", "metrics": current_metrics}), 200
+    except Exception as err:
+        return jsonify({"error": str(err)}), 500
 
 @app.route('/api/health', methods=['GET'])
 def health():
@@ -934,6 +1069,24 @@ def rule_based_cohort_summary(cohort_data):
 @app.route('/api/student/<email>/ai-summary', methods=['GET'])
 def get_student_ai_summary(email):
     try:
+        student_ref = db.collection('students').document(email)
+        student_doc = student_ref.get()
+        if student_doc.exists:
+            student_data = student_doc.to_dict()
+            cached_summary = student_data.get("aiSummary")
+            cached_recs = student_data.get("aiRecs")
+            cached_time = student_data.get("aiLastUpdated")
+            
+            if cached_summary and cached_recs and cached_time:
+                last_updated = datetime.datetime.fromisoformat(cached_time)
+                if (datetime.datetime.now() - last_updated).total_seconds() < 43200:
+                    return jsonify({
+                        "summary": cached_summary,
+                        "recommendations": cached_recs,
+                        "is_ai": student_data.get("aiIsAi", False),
+                        "cached": True
+                    }), 200
+
         data = get_student_side_data(email)
         if not data:
             return jsonify({"error": "Student not found"}), 404
@@ -941,11 +1094,15 @@ def get_student_ai_summary(email):
         metrics = data["metrics"]
         evaluation = data["evaluation"]
         
+        summary_result = None
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
+            leet_metrics = metrics.get('leetcode', {}) or {}
+            github_metrics = metrics.get('github', {}) or {}
+            
             prompt = f"""
             You are an expert AI Coding Coach. Analyze this student's coding metrics and provide a brief summary and 3 recommendations.
-            Keep the response in strict JSON format:
+            Do NOT include any emojis in your response. Keep the response in strict JSON format:
             {{
               "summary": "1-2 sentence analysis summarizing their focus (DSA vs Projects) and consistency.",
               "recommendations": [
@@ -956,35 +1113,68 @@ def get_student_ai_summary(email):
             }}
 
             Student Data:
-            - GitHub: {metrics.get('github', {}).get('repos', 0) if metrics.get('github') else 0} repositories, {metrics.get('github', {}).get('totalCommits', 0) if metrics.get('github') else 0} commits.
-            - LeetCode: {metrics.get('leetcode', {}).get('totalSolved', 0) if metrics.get('leetcode') else 0} solved (Easy: {metrics.get('leetcode', {}).get('easy', 0) if metrics.get('leetcode') else 0}, Med: {metrics.get('leetcode', {}).get('medium', 0) if metrics.get('leetcode') else 0}, Hard: {metrics.get('leetcode', {}).get('hard', 0) if metrics.get('leetcode') else 0}).
-            - Kaggle: {metrics.get('kaggle', {}).get('datasets', 0) if metrics.get('kaggle') else 0} datasets, {metrics.get('kaggle', {}).get('notebooks', 0) if metrics.get('kaggle') else 0} notebooks.
+            - GitHub: {github_metrics.get('repos', 0)} repositories, {github_metrics.get('totalCommits', 0)} commits.
+            - LeetCode: {leet_metrics.get('totalSolved', 0)} total solved (Easy: {leet_metrics.get('easy', 0)}, Medium: {leet_metrics.get('medium', 0)}, Hard: {leet_metrics.get('hard', 0)}).
             - Consistency Score: {evaluation.get('consistency', 0)}/100.
+            
+            If the student has high Easy solves but few Medium/Hard solves on LeetCode, recommend they practice more Medium/Hard questions.
             """
             ai_text = generate_ai_analysis(prompt)
             if ai_text:
                 try:
                     parsed = clean_and_parse_json(ai_text)
-                    parsed["is_ai"] = True
-                    return jsonify(parsed), 200
+                    summary_result = {
+                        "summary": parsed["summary"],
+                        "recommendations": parsed["recommendations"],
+                        "is_ai": True
+                    }
                 except Exception as parse_err:
                     print(f"Failed to parse Gemini JSON: {parse_err}. Text: {ai_text}")
                     
-        return jsonify(rule_based_student_summary(metrics, evaluation)), 200
+        if not summary_result:
+            summary_result = rule_based_student_summary(metrics, evaluation)
+            
+        student_ref.update({
+            "aiSummary": summary_result["summary"],
+            "aiRecs": summary_result["recommendations"],
+            "aiIsAi": summary_result["is_ai"],
+            "aiLastUpdated": datetime.datetime.now().isoformat()
+        })
+        
+        return jsonify(summary_result), 200
     except Exception as err:
         return jsonify({"error": str(err)}), 500
 
 @app.route('/api/admin/cohort/ai-summary', methods=['GET'])
 def get_cohort_ai_summary():
     try:
+        cache_ref = db.collection('settings').document('cohort_ai_summary')
+        cache_doc = cache_ref.get()
+        if cache_doc.exists:
+            cache_data = cache_doc.to_dict()
+            cached_summary = cache_data.get("summary")
+            cached_recs = cache_data.get("recommendations")
+            cached_time = cache_data.get("lastUpdated")
+            
+            if cached_summary and cached_recs and cached_time:
+                last_updated = datetime.datetime.fromisoformat(cached_time)
+                if (datetime.datetime.now() - last_updated).total_seconds() < 43200:
+                    return jsonify({
+                        "summary": cached_summary,
+                        "recommendations": cached_recs,
+                        "is_ai": cache_data.get("isAi", False),
+                        "cached": True
+                    }), 200
+
         cohort_res = get_cohort_analytics()
         cohort_data = cohort_res[0].json
         
+        summary_result = None
         api_key = os.environ.get("GEMINI_API_KEY")
         if api_key:
             prompt = f"""
             You are an expert Education Administrator AI. Analyze this cohort's performance metrics and provide a summary and 3 recommendations.
-            Keep the response in strict JSON format:
+            Do NOT include any emojis in your response. Keep the response in strict JSON format:
             {{
               "summary": "1-2 sentence summary of overall class engagement and performance.",
               "recommendations": [
@@ -1004,12 +1194,25 @@ def get_cohort_ai_summary():
             if ai_text:
                 try:
                     parsed = clean_and_parse_json(ai_text)
-                    parsed["is_ai"] = True
-                    return jsonify(parsed), 200
+                    summary_result = {
+                        "summary": parsed["summary"],
+                        "recommendations": parsed["recommendations"],
+                        "is_ai": True
+                    }
                 except Exception as parse_err:
                     print(f"Failed to parse Gemini JSON for cohort: {parse_err}. Text: {ai_text}")
                     
-        return jsonify(rule_based_cohort_summary(cohort_data)), 200
+        if not summary_result:
+            summary_result = rule_based_cohort_summary(cohort_data)
+            
+        cache_ref.set({
+            "summary": summary_result["summary"],
+            "recommendations": summary_result["recommendations"],
+            "isAi": summary_result["is_ai"],
+            "lastUpdated": datetime.datetime.now().isoformat()
+        })
+        
+        return jsonify(summary_result), 200
     except Exception as err:
         return jsonify({"error": str(err)}), 500
 
