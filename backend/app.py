@@ -7,6 +7,7 @@ import urllib.error
 import datetime
 import threading
 import time
+import requests
 
 app = Flask(__name__)
 CORS(app)
@@ -282,7 +283,7 @@ def fetch_leetcode(username):
             submission_calendar = json.loads(calendar_str)
             raw_solves = {}
             for ts, count in submission_calendar.items():
-                date_str = datetime.datetime.utcfromtimestamp(int(ts)).strftime('%Y-%m-%d')
+                date_str = datetime.datetime.fromtimestamp(int(ts), datetime.timezone.utc).strftime('%Y-%m-%d')
                 raw_solves[date_str] = count
                 
             result["rawSolves"] = raw_solves
